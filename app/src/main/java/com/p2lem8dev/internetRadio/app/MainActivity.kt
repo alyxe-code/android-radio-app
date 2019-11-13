@@ -17,7 +17,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var mStationsViewModel: StationsViewModel
-//    private var jobUpdateSelectedStation: Job? = null
+    private var jobUpdateSelectedStation: Job? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -25,23 +25,23 @@ class MainActivity : AppCompatActivity() {
 
         mStationsViewModel = ViewModelProvider(this).get(StationsViewModel::class.java)
 
-//        jobUpdateSelectedStation = GlobalScope.launch {
-//            while (true) {
-//                SessionRepository.get().getCurrentSession().let {
-//                    if (it.lastRunningStationId != null && mStationsViewModel.selectedStation.value != null &&
-//                        it.lastRunningStationId != mStationsViewModel.selectedStation.value!!.stationId
-//                    ) {
-//                        mStationsViewModel.setSelected(
-//                            RadioRepository.get()
-//                                .findByStationId(it.lastRunningStationId!!)!!,
-//                            updateSession = false,
-//                            postValue = true
-//                        )
-//                    }
-//                }
-//                Thread.sleep(100)
-//            }
-//        }
+        jobUpdateSelectedStation = GlobalScope.launch {
+            while (true) {
+                SessionRepository.get().getCurrentSession().let {
+                    if (it.lastRunningStationId != null && mStationsViewModel.selectedStation.value != null &&
+                        it.lastRunningStationId != mStationsViewModel.selectedStation.value!!.stationId
+                    ) {
+                        mStationsViewModel.setSelected(
+                            RadioRepository.get()
+                                .findByStationId(it.lastRunningStationId!!)!!,
+                            updateSession = false,
+                            postValue = true
+                        )
+                    }
+                }
+                Thread.sleep(100)
+            }
+        }
 
         binding.navView.setupWithNavController(findNavController(R.id.nav_host_fragment))
     }

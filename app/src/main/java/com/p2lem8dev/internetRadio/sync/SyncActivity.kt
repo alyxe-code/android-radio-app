@@ -29,7 +29,7 @@ class SyncActivity : AppCompatActivity() {
 
         GlobalScope.launch {
 
-            if (SessionRepository.get().isSyncDateValid()) {
+            if (SessionRepository.get().isSyncDateValid().not()) {
                 val imagesSaveDir = filesDir.absolutePath + "/stations"
                 File(imagesSaveDir).mkdir()
 
