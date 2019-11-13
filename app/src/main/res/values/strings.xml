@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">Internet Radio</string>
+    <string name="title_activity_main">MainActivity</string>
+    <string name="title_activity_splash">SplashActivity</string>
+    <string name="title_activity_sync">SyncActivity</string>
+    <string name="title_home">Home</string>
+    <string name="title_saved_stations">Saved</string>
+    <string name="title_player">Player</string>
+    <string name="loading_stations_list">Loading stations list</string>
+    <string name="loading_0_0">0 / 0</string>
+    <string name="no_internet_connection">No internet connection</string>
+    <string name="application_logo">Application logo</string>
+</resources>

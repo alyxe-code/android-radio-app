@@ -1,0 +1,37 @@
+<resources>
+
+    <!-- Base application theme. -->
+    <style name="AppTheme" parent="Theme.AppCompat.NoActionBar">
+        <!-- Customize your theme here. -->
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+        <item name="colorAccent">@color/colorAccent</item>
+    </style>
+
+    <style name="SplashTheme" parent="Theme.AppCompat.NoActionBar">
+        <item name="android:windowBackground">@drawable/splash_screen</item>
+    </style>
+
+    <style name="PlayerButtons" />
+    <style name="PlayerButtons.PlayStop">
+        <item name="android:layout_width">40dp</item>
+        <item name="android:layout_height">40dp</item>
+        <item name="android:layout_marginBottom">56dp</item>
+        <item name="android:background">@drawable/ic_player_play_normal</item>
+    </style>
+
+    <style name="PlayerButtons.PreviousNext">
+        <item name="android:layout_width">32dp</item>
+        <item name="android:layout_height">32dp</item>
+        <item name="android:layout_marginStart">56dp</item>
+        <item name="android:layout_marginEnd">56dp</item>
+
+    </style>
+    <style name="PlayerButtons.PreviousNext.Next" parent="PlayerButtons.PreviousNext">
+        <item name="android:background">@drawable/ic_player_next_normal</item>
+    </style>
+    <style name="PlayerButtons.PreviousNext.Previous" parent="PlayerButtons.PreviousNext">
+        <item name="android:background">@drawable/ic_player_previous_normal</item>
+    </style>
+
+</resources>

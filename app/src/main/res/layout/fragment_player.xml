@@ -1,0 +1,98 @@
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <data>
+
+        <variable
+            name="viewModel"
+            type="com.p2lem8dev.internetRadio.app.ui.player.PlayerViewModel" />
+
+        <import type="android.view.View" />
+    </data>
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <ImageView
+            android:id="@+id/thumb"
+            android:layout_width="260dp"
+            android:layout_height="260dp"
+            android:layout_marginTop="52dp"
+            app:image_url="@{viewModel.stationData.imageUrl}"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.491"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:background="@tools:sample/avatars" />
+
+        <TextView
+            android:id="@+id/title"
+            style="@style/TextAppearance.AppCompat.Headline"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="64dp"
+            android:text="@{viewModel.stationData.title}"
+            android:textAlignment="center"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/thumb"
+            tools:text="Radio MSC" />
+
+        <TextView
+            android:id="@+id/location"
+            style="@style/TextAppearance.AppCompat.Subhead"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:textAlignment="center"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.502"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/title"
+            app:formatter_country="@{viewModel.stationData.country}"
+            app:formatter_region="@{viewModel.stationData.region}"
+            app:formatter_city="@{viewModel.stationData.city}"
+            tools:text="Russia - Moscow" />
+
+        <SeekBar
+            android:id="@+id/sound_volume"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="32dp"
+            android:paddingStart="32dp"
+            android:paddingEnd="32dp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/location" />
+
+        <ImageButton
+            android:id="@+id/btn_play"
+            style="@style/PlayerButtons.PlayStop"
+            android:background="@{ viewModel.isPlaying() ? @drawable/ic_player_stop_normal : @drawable/ic_player_play_normal }"
+            android:onClick="@{() -> viewModel.handleClickPlayStop()}"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent" />
+
+        <ImageButton
+            android:id="@+id/btn_next"
+            style="@style/PlayerButtons.PreviousNext.Next"
+            android:onClick="@{() -> viewModel.handleClickNext()}"
+            android:visibility="@{viewModel.hasNext() ? View.VISIBLE : View.GONE}"
+            app:layout_constraintBottom_toBottomOf="@+id/btn_play"
+            app:layout_constraintStart_toEndOf="@+id/btn_play"
+            app:layout_constraintTop_toTopOf="@+id/btn_play" />
+
+        <ImageButton
+            android:id="@+id/btn_previous"
+            style="@style/PlayerButtons.PreviousNext.Previous"
+            android:onClick="@{() -> viewModel.handleClickPrevious()}"
+            android:visibility="@{viewModel.hasPrevious() ? View.VISIBLE : View.GONE}"
+            app:layout_constraintBottom_toBottomOf="@+id/btn_play"
+            app:layout_constraintEnd_toStartOf="@+id/btn_play"
+            app:layout_constraintTop_toTopOf="@+id/btn_play" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</layout>
