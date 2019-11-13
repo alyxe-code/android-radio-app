@@ -14,7 +14,8 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme"
-        tools:ignore="GoogleAppIndexingWarning">
+        tools:ignore="GoogleAppIndexingWarning"
+        android:usesCleartextTraffic="true">
         <service android:name="com.p2lem8dev.internetRadio.app.service.player.PlayerService" />
         <activity
             android:name="com.p2lem8dev.internetRadio.splash.SplashActivity"

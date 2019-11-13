@@ -71,11 +71,7 @@ class RadioRepository(
                     true,
                     mApplicationContext.filesDir.absolutePath,
                     onNextIteration = {
-                        onNextIteration?.invoke(
-                            it,
-                            indexItem,
-                            count
-                        )
+                        onNextIteration?.invoke(it, indexItem, count)
                         indexItem += 1
                     },
                     onNext = { onNextValid?.invoke(it) },

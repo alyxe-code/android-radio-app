@@ -2,6 +2,7 @@ package com.p2lem8dev.internetRadio.app.ui.home
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -9,6 +10,7 @@ import androidx.databinding.DataBindingUtil
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
+import com.google.gson.Gson
 import com.p2lem8dev.internetRadio.R
 import com.p2lem8dev.internetRadio.app.service.player.PlayerService
 import com.p2lem8dev.internetRadio.app.ui.stations.StationsFragment
@@ -56,6 +58,8 @@ class HomeFragment : StationsFragment(), ListActionHandler {
         stationsViewModel
             .usePlaylist(Playlist.PLAYLIST_SELECTOR_ANY)
             .setSelected(station)
+
+        Log.d("PLAYER_SERVICE", Gson().toJson(station))
 
         invokeServicePlay(
             station.stationId,

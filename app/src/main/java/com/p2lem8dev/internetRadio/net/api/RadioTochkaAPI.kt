@@ -36,7 +36,7 @@ data class RadiosCountResponse(
 class RadioBaseResponse(
     val id: String,
     val title: String,
-    val links: List<Link>
+    var links: List<Link>
 )
 
 data class Link(

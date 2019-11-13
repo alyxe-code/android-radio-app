@@ -10,6 +10,7 @@ import android.net.Uri
 import android.os.Binder
 import android.os.IBinder
 import android.util.Log
+import android.widget.Toast
 import com.google.android.exoplayer2.*
 import com.google.android.exoplayer2.audio.AudioAttributes
 import com.google.android.exoplayer2.extractor.DefaultExtractorsFactory
@@ -17,6 +18,7 @@ import com.google.android.exoplayer2.source.ExtractorMediaSource
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
 import com.google.android.exoplayer2.util.Util
+import com.google.gson.Gson
 import com.p2lem8dev.internetRadio.app.MainActivity
 import com.p2lem8dev.internetRadio.app.service.NotificationCreator
 import com.p2lem8dev.internetRadio.app.utils.Playlist
@@ -134,14 +136,7 @@ class PlayerService : Service() {
     }
 
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-
-        if (intent == null) {
-            Log.wtf("PLAYER_SERVICE", "Intent is null")
-            // cannot start
-            return START_NOT_STICKY
-        }
-
+    override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
         GlobalScope.launch {
             if (commandsRequireStation.contains(intent.action)) {
                 // validate stationId
@@ -340,8 +335,10 @@ class PlayerService : Service() {
 
     private suspend fun play() {
         isPlaying = true
-        prepareExoPlayer(stationData!!.links[0])
-        SessionRepository.get().setRadioRunning(stationId!!)
+        stationData?.let {
+            prepareExoPlayer(it.links[0])
+            SessionRepository.get().setRadioRunning(stationId!!)
+        }
     }
 
     private fun stop() {

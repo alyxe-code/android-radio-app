@@ -5,6 +5,7 @@ import com.p2lem8dev.internetRadio.database.radio.RadioDatabase
 import com.p2lem8dev.internetRadio.database.session.SessionDatabase
 import com.p2lem8dev.internetRadio.net.api.RadioTochkaAPI
 import com.p2lem8dev.internetRadio.net.repository.RadioRepository
+import com.p2lem8dev.internetRadio.net.repository.RadioStationRepository
 import com.p2lem8dev.internetRadio.net.repository.SessionRepository
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
@@ -23,6 +24,11 @@ class InternetRadioApp : Application() {
         val radioDb = RadioDatabase.getInstance(applicationContext)
         val sessionDb = SessionDatabase.getInstance(applicationContext)
 
+        RadioStationRepository.create(
+            applicationContext,
+            radioDb.getRadioStationsDao(),
+            mRadioTochkaAPI
+        )
         RadioRepository.create(applicationContext, radioDb.getRadioStationsDao(), mRadioTochkaAPI)
         SessionRepository.create(sessionDb.getSessionDao())
     }
