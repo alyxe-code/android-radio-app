@@ -6,7 +6,7 @@ import com.google.gson.Gson
 import com.p2lem8dev.internetRadio.database.radio.RadioDatabase
 import com.p2lem8dev.internetRadio.database.radio.dao.RadioStationsDao
 import com.p2lem8dev.internetRadio.database.radio.entities.RadioStation
-import com.p2lem8dev.internetRadio.net.api.RadioBaseResponse
+import com.p2lem8dev.internetRadio.net.api.BaseRadioInfo
 import com.p2lem8dev.internetRadio.net.api.RadioTochkaAPI
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
@@ -47,7 +47,7 @@ class RadioRepository(
     fun sync(
         filter: ((station: RadioStation) -> Boolean)? = null,
         onNextValid: ((station: RadioStation) -> Unit)? = null,
-        onNextIteration: ((RadioBaseResponse?, index: Int, count: Int) -> Unit)? = null,
+        onNextIteration: ((BaseRadioInfo?, index: Int, count: Int) -> Unit)? = null,
         onFinish: ((start: Long, finish: Long) -> Unit)? = null,
         canContinue: (suspend () -> Boolean)
     ) {
@@ -134,7 +134,7 @@ class RadioRepository(
         page: Int,
         loadImages: Boolean = true,
         saveImagesPath: String,
-        onNextIteration: ((RadioBaseResponse?) -> Unit)? = null,
+        onNextIteration: ((BaseRadioInfo?) -> Unit)? = null,
         onNext: (station: RadioStation) -> Unit,
         canContinue: suspend () -> Boolean,
         sleepTime: Long = 100L
@@ -143,7 +143,7 @@ class RadioRepository(
         withContext(context = Dispatchers.IO) {
             waitWhile(canContinue)
 
-            val pageItems = ArrayList<RadioBaseResponse>()
+            val pageItems = ArrayList<BaseRadioInfo>()
 
             while (true) {
                 try {

@@ -2,10 +2,12 @@ package com.p2lem8dev.internetRadio.sync
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import androidx.databinding.DataBindingUtil
 import androidx.lifecycle.ViewModelProvider
 import com.p2lem8dev.internetRadio.R
+import com.p2lem8dev.internetRadio.app.InternetRadioApp
 import com.p2lem8dev.internetRadio.app.MainActivity
 import com.p2lem8dev.internetRadio.databinding.ActivitySyncBinding
 import com.p2lem8dev.internetRadio.net.repository.RadioStationRepository
@@ -21,23 +23,19 @@ class SyncActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         binding = DataBindingUtil.setContentView(this, R.layout.activity_sync)
+
         syncViewModel = ViewModelProvider(this).get(SyncViewModel::class.java)
-        binding.viewModel = syncViewModel
-        binding.executePendingBindings()
 
         GlobalScope.launch {
-
-            if (SessionRepository.get().isSyncDateValid().not()) {
-                val imagesSaveDir = filesDir.absolutePath + "/stations"
-                File(imagesSaveDir).mkdir()
-
-                RadioStationRepository.get().sync(imagesSaveDir)
-            }
-
-            startActivity(Intent(applicationContext, MainActivity::class.java))
-            finish()
+            syncViewModel.sync(
+                applicationContext,
+                InternetRadioApp.RADIO_TOCHKA_API_HOST,
+                filesDir.absolutePath + "/stations"
+            )
+//            startActivity(Intent(applicationContext, MainActivity::class.java))
+//            finish()
         }
     }
+
 }

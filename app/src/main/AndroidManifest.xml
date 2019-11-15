@@ -7,30 +7,36 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
     <application
-        android:name="com.p2lem8dev.internetRadio.app.InternetRadioApp"
+        android:name=".app.InternetRadioApp"
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme"
-        tools:ignore="GoogleAppIndexingWarning"
-        android:usesCleartextTraffic="true">
-        <service android:name="com.p2lem8dev.internetRadio.app.service.player.PlayerService" />
+        android:usesCleartextTraffic="true"
+        tools:ignore="GoogleAppIndexingWarning">
+        <service
+            android:name=".app.service.sync.SyncService"
+            android:enabled="true"
+            android:exported="false" />
+        <service android:name=".app.service.player.PlayerService" />
+
         <activity
-            android:name="com.p2lem8dev.internetRadio.splash.SplashActivity"
+            android:name=".splash.SplashActivity"
             android:label="@string/title_activity_splash"
             android:theme="@style/SplashTheme">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
+
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
         <activity
-            android:name="com.p2lem8dev.internetRadio.app.MainActivity"
+            android:name=".app.MainActivity"
             android:label="@string/title_activity_main" />
         <activity
-            android:name="com.p2lem8dev.internetRadio.sync.SyncActivity"
+            android:name=".sync.SyncActivity"
             android:label="@string/title_activity_sync" />
     </application>
 

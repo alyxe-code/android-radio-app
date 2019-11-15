@@ -3,151 +3,143 @@ package com.p2lem8dev.internetRadio.net.repository
 import android.content.Context
 import android.util.Log
 import android.webkit.URLUtil
+import com.p2lem8dev.internetRadio.app.service.sync.extractors.ConverterFactory
+import com.p2lem8dev.internetRadio.app.service.sync.extractors.M3UConverterFactory
+import com.p2lem8dev.internetRadio.app.service.sync.extractors.PLSConverterFactory
+import com.p2lem8dev.internetRadio.app.service.sync.extractors.URLConverterFactory
 import com.p2lem8dev.internetRadio.database.radio.dao.RadioStationsDao
 import com.p2lem8dev.internetRadio.database.radio.entities.RadioStation
+import com.p2lem8dev.internetRadio.database.radio.factory.RadioStationFactory
 import com.p2lem8dev.internetRadio.net.api.Link
-import com.p2lem8dev.internetRadio.net.api.RadioBaseResponse
+import com.p2lem8dev.internetRadio.net.api.BaseRadioInfo
 import com.p2lem8dev.internetRadio.net.api.RadioTochkaAPI
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.BufferedReader
 import java.io.File
-import java.io.InputStream
-import java.lang.Exception
-import java.lang.IllegalArgumentException
-import java.net.HttpURLConnection
-import java.net.URL
 
 class RadioStationRepository(
-    private val applicationContext: Context,
     private val stationsDao: RadioStationsDao,
-    private val api: RadioTochkaAPI
+    private val api: RadioTochkaAPI,
+    private val urlConverterFactories: List<ConverterFactory>? = listOf(
+        M3UConverterFactory(),
+        PLSConverterFactory()
+    )
 ) {
 
-    suspend fun sync(imagesSaveDir: String) {
-        val start = System.currentTimeMillis() / 1000
-        val stations = ArrayList<RadioBaseResponse>()
-        // get all available links
-        getAllStationsShort()
-            // validate links
-            .filter { validateLinks(it.links).isNotEmpty() }
-            // configure links
-            .forEach { station ->
-                val newLinks = arrayListOf<Link>()
-                station.links.forEach setupURL@{ link ->
-                    val ext = link.url.substring(link.url.lastIndexOf('.'))
-                    // check if the url is a link to a remote file | .m4u
-                    if (ext.substring(0, 4) == ".m4u") {
-                        // get file text
-                        val response = URL(link.url).readText()
-                        if (!URLUtil.isValidUrl(response))
-                            return@setupURL
-                        // check response code
-                        val url = URL(response).openConnection() as HttpURLConnection
-                        if (url.responseCode != HttpURLConnection.HTTP_OK)
-                            return@setupURL
-                        // save changes
-                        newLinks.add(
-                            Link(
-                                bitrate = link.bitrate,
-                                app = link.bitrate,
-                                url = response
-                            )
-                        )
-                    }
-                    // check if ext contains / or : -> a URL | and check it's not a file url
-                    if ((ext.indexOf('/') != -1 || ext.indexOf(':') != -1) && !URLUtil.isFileUrl(
-                            link.url
-                        )
-                    ) {
-                        newLinks.add(link)
-                    }
+    /**
+     * Synchronize database with API stored radio stations
+     * @param imagesSaveDir Destination path to save images
+     * @param onLoad Every time when a station has been found and validated
+     * @param onSave Every time when a station is going to be saved to database
+     */
+    suspend fun sync(
+        imagesSaveDir: String,
+        onLoad: ((station: BaseRadioInfo) -> Unit)? = null,
+        onSave: ((station: RadioStation) -> Unit)? = null
+    ) {
+        stationsDao.deleteAll()
+        getAllAvailableBaseStations(true) {
+            GlobalScope.launch(context = Dispatchers.IO) {
+                onLoad?.invoke(it)
+                val station = fillRadioStation(it.id) ?: return@launch
+                val dbStation = stationsDao.findByStationId(it.id)
+                if (dbStation != null) {
+                    station.id = dbStation.id
+                    station.isFavorite = dbStation.isFavorite
                 }
-                // update station data
-                station.links = newLinks
-                if (newLinks.size > 0) {
-                    stations.add(station)
-                }
-            }
 
-        Log.d("SYNC_TEST", "Configured ${stations.size} stations")
-
-        // configure radio station and download image
-        val radioStations = stations.mapNotNull { station ->
-            var result: RadioStation? = null
-            withContext(context = Dispatchers.IO) {
-                getRadioStation(station.id)?.let { radioStation ->
-                    radioStation.links = station.links.map { it.url } as ArrayList<String>
-                    radioStation.imageUrl = downloadStationImage(station.id, imagesSaveDir)
-                    result = radioStation
+                val imagePath = downloadStationImage(it.id, imagesSaveDir)
+                if (imagePath != null) {
+                    station.imageUrl = imagePath
                 }
+
+                onSave?.invoke(station)
+                stationsDao.insert(station)
             }
-            result
         }
-
-        Log.d("SYNC_TEST", "Filled ${stations.size} stations")
-        Log.d("SYNC_TEST", "Synchronizing database")
-
-        syncDatabaseWith(radioStations, force = true)
-
-        Log.d("SYNC_TEST", "Database synchronized | ${stationsDao.selectAll().size}")
-        val finish = System.currentTimeMillis() / 1000
-        Log.d("SYNC_TEST", "Finished in ${finish - start} seconds")
-
-        SessionRepository.get().updateSyncDate()
     }
 
     /**
-     * Get list of all stations
+     * Get list of all available stations and filter it
+     * with accessibility and extracting urls in case when
+     * given url is a file or redirects to another one
+     * @param onlyRunning Search only running stations
+     * @return List of extracted filtered stations
      */
-    private suspend fun getAllStationsShort(): List<RadioBaseResponse> {
-        var index = 0
-        val result = ArrayList<RadioBaseResponse>()
+    public suspend fun getAllAvailableBaseStations(
+        onlyRunning: Boolean = false,
+        onNext: (station: BaseRadioInfo) -> Unit
+    ): List<BaseRadioInfo> {
+        // get list of all stations from API
+        val allAPIStations = ArrayList<BaseRadioInfo>()
+        var pageIndex = 0
         while (true) {
-            val items = api.getPage(index)
-            if (items.isEmpty()) break
-            result.addAll(items)
-            index += items.size
+            val pageStations = api.getPage(pageIndex++)
+            if (pageStations.isEmpty()) break
+            allAPIStations.addAll(pageStations)
+        }
+        Log.d("SYNC", "Found ${allAPIStations.size} stations")
+        // filter received stations
+        val availableStations = arrayListOf<BaseRadioInfo>()
+        allAPIStations.forEach { station ->
+            Log.d("SYNC", "Fetching station#${station.id} ${station.title}")
+            // Filter links
+            val availableLinks = arrayListOf<Link>()
+            station.links.forEach { link ->
+                URLConverterFactory.extract(link.url, onlyRunning, urlConverterFactories)
+                    ?.distinct()
+                    ?.sortedBy { URLUtil.isHttpsUrl(it) }
+                    ?.minBy { URLConverterFactory.isRunning(it) }
+                    ?.let { availableLinks.add(Link(it, link.bitrate, link.app)) }
+            }
+            // Add station to result array
+            if (availableLinks.isNotEmpty()) {
+                station.links = availableLinks
+                availableStations.add(station)
+                onNext(station)
+            }
         }
 
-        return result
+        return availableStations
     }
 
     /**
      * Get full radio station data
      */
-    private suspend fun getRadioStation(stationId: String): RadioStation? {
-        val radio = api.getRadio(stationId) ?: return null
-        return RadioStation(
-            stationId = stationId,
-            title = radio.title,
-            country = radio.country,
-            region = radio.region,
-            city = radio.city,
-            links = radio.links.map { it.url } as ArrayList<String>,
-            listeners = radio.listeners.toInt(),
-            views = radio.views.toInt(),
-            playerStream = radio.playerStream,
-            language = radio.language,
-            genres = radio.genres.map { it.genre } as ArrayList<String>,
-            voted = radio.voted.toInt(),
-            isFavorite = false,
-            imageUrl = null
-        )
+    public suspend fun fillRadioStation(stationId: String): RadioStation? {
+        return RadioStationFactory.from(api.getRadio(stationId) ?: return null)
     }
 
     /**
      * Download station image
+     * @param stationId Id get download image
+     * @param destPath Destination path to save image
+     * @return Downloaded image path
      */
-    private suspend fun downloadStationImage(stationId: String, destPath: String): String? {
+    public suspend fun downloadStationImage(
+        stationId: String,
+        destPath: String,
+        force: Boolean = false
+    ): String? {
         val dir = File(destPath)
-        require(dir.exists() && dir.isDirectory) { IllegalArgumentException("Destination path must be a directory") }
-
-        val stationImage = api.getStationImage(stationId)
-
-        requireNotNull(stationImage.contentType()) { IllegalArgumentException("Image content type must be defined") }
-        require(stationImage.contentType()!!.type() == "image") { IllegalArgumentException("Image content type must be image") }
-
+        // check destination file exists
+        if (!dir.exists()) dir.mkdir()
+        // validate destination file is directory
+        if (dir.exists() && !dir.isDirectory) {
+            if (force) {
+                dir.delete()
+                dir.mkdir()
+            } else return null
+        }
+        // get image via API
+        val stationImage = api.getStationImage2(stationId)
+        // validate received content type
+        if (stationImage.contentType() == null || stationImage.contentType()!!.type() != "image") {
+            return null
+        }
+        // save image on disk
         var filename: String? = "$destPath/$stationId.${stationImage.contentType()!!.subtype()}"
         withContext(context = Dispatchers.IO) {
             try {
@@ -163,7 +155,7 @@ class RadioStationRepository(
      * Delete all stations that are not in the array
      * and import array into database
      */
-    private suspend fun syncDatabaseWith(stations: List<RadioStation>, force: Boolean = false) {
+    public suspend fun syncDatabaseWith(stations: List<RadioStation>, force: Boolean = false) {
         if (force) {
             stationsDao.deleteAll()
         } else {
@@ -180,35 +172,6 @@ class RadioStationRepository(
         })
     }
 
-    private val supportedURLProtocols = listOf("http", "https")
-    private val supportedContentTypes = listOf("audio/mpeg", "audio/x-mpegurl")
-
-    private suspend fun validateLinks(links: List<Link>): List<Link> {
-        return links.filter { link ->
-            val protocol = link.url.split("://")[0]
-            if (!supportedURLProtocols.contains(protocol)) return@filter false
-            return@filter try {
-                var result = false
-                withContext(context = Dispatchers.IO) {
-                    val connection = URL(link.url).openConnection()
-                    if (connection.contentType == null) {
-                        val ext = link.url.substring(link.url.lastIndexOf("."))
-                        if (ext.substring(0, 4) == ".m3u") {
-                            result = true
-                            return@withContext
-                        }
-                    }
-                    result = supportedContentTypes.contains(
-                        connection.contentType
-                    )
-                }
-                result
-            } catch (e: Exception) {
-                false
-            }
-        }
-    }
-
     companion object {
         private var mInstance: RadioStationRepository? = null
 
@@ -217,7 +180,7 @@ class RadioStationRepository(
             stationsDao: RadioStationsDao,
             api: RadioTochkaAPI
         ) {
-            mInstance = RadioStationRepository(applicationContext, stationsDao, api)
+            mInstance = RadioStationRepository(stationsDao, api)
         }
 
         fun get(): RadioStationRepository {

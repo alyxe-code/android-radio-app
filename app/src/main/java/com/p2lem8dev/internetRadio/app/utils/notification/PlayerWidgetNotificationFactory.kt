@@ -1,4 +1,4 @@
-package com.p2lem8dev.internetRadio.app.service
+package com.p2lem8dev.internetRadio.app.utils.notification
 
 import android.app.Notification
 import android.app.PendingIntent
@@ -8,15 +8,14 @@ import android.graphics.BitmapFactory
 import android.graphics.drawable.Icon
 import android.media.session.MediaSession
 import com.p2lem8dev.internetRadio.R
+import com.p2lem8dev.internetRadio.app.service.NotificationFactory
 import com.p2lem8dev.internetRadio.app.service.player.PlayerService
 import com.p2lem8dev.internetRadio.database.radio.entities.RadioStation
 
-class NotificationCreator(private val context: Context) {
+class PlayerWidgetNotificationFactory(context: Context) : NotificationFactory(context) {
 
-    private var notificationBuilder: Notification.Builder? = null
-    private val playerServiceIntent = Intent(context, PlayerService::class.java)
 
-    fun addActionClose(): NotificationCreator {
+    fun addActionClose(): NotificationFactory {
         notificationBuilder?.addAction(
             Notification.Action.Builder(
                 Icon.createWithResource(context, R.drawable.ic_close_black_24dp),
@@ -24,7 +23,7 @@ class NotificationCreator(private val context: Context) {
                 PendingIntent.getService(
                     context,
                     0,
-                    playerServiceIntent.apply {
+                    intent.apply {
                         action =
                             PlayerService.ACTION_KILL
                     },
@@ -36,7 +35,7 @@ class NotificationCreator(private val context: Context) {
         return this
     }
 
-    fun addActionPlay(stationId: String, playlistAny: Boolean): NotificationCreator {
+    fun addActionPlay(stationId: String, playlistAny: Boolean): NotificationFactory {
         notificationBuilder?.addAction(
             Notification.Action.Builder(
                 Icon.createWithResource(context, R.drawable.ic_player_play_normal),
@@ -57,7 +56,7 @@ class NotificationCreator(private val context: Context) {
         return this
     }
 
-    fun addActionPlayNext(stationId: String, playlistAny: Boolean): NotificationCreator {
+    fun addActionPlayNext(stationId: String, playlistAny: Boolean): NotificationFactory {
         notificationBuilder?.addAction(
             Notification.Action.Builder(
                 Icon.createWithResource(context, R.drawable.ic_player_next_normal),
@@ -78,7 +77,7 @@ class NotificationCreator(private val context: Context) {
         return this
     }
 
-    fun addActionPlayPrevious(stationId: String, playlistAny: Boolean): NotificationCreator {
+    fun addActionPlayPrevious(stationId: String, playlistAny: Boolean): NotificationFactory {
         notificationBuilder?.addAction(
             Notification.Action.Builder(
                 Icon.createWithResource(
@@ -89,7 +88,7 @@ class NotificationCreator(private val context: Context) {
                 PendingIntent.getService(
                     context,
                     0,
-                    playerServiceIntent.apply {
+                    intent.apply {
                         action = PlayerService.ACTION_PLAY_PREVIOUS
                         putExtra(PlayerService.EXTRA_STATION_ID, stationId)
                         putExtra(PlayerService.EXTRA_PLAYLIST_SELECTOR, playlistAny)
@@ -102,7 +101,7 @@ class NotificationCreator(private val context: Context) {
         return this
     }
 
-    fun addActionStop(stationId: String, playlistAny: Boolean): NotificationCreator {
+    fun addActionStop(stationId: String, playlistAny: Boolean): NotificationFactory {
         notificationBuilder?.addAction(
             Notification.Action.Builder(
                 Icon.createWithResource(context, R.drawable.ic_player_stop_normal),
@@ -110,7 +109,7 @@ class NotificationCreator(private val context: Context) {
                 PendingIntent.getService(
                     context,
                     0,
-                    playerServiceIntent.apply {
+                    intent.apply {
                         action = PlayerService.ACTION_STOP
                         putExtra(PlayerService.EXTRA_STATION_ID, stationId)
                         putExtra(PlayerService.EXTRA_PLAYLIST_SELECTOR, playlistAny)
@@ -127,7 +126,7 @@ class NotificationCreator(private val context: Context) {
         stationId: String,
         playlistAny: Boolean,
         isFavorite: Boolean
-    ): NotificationCreator {
+    ): NotificationFactory {
         notificationBuilder?.addAction(
             Notification.Action.Builder(
                 Icon.createWithResource(
@@ -139,7 +138,7 @@ class NotificationCreator(private val context: Context) {
                 PendingIntent.getService(
                     context,
                     0,
-                    playerServiceIntent.apply {
+                    intent.apply {
                         action = PlayerService.ACTION_CHANGE_FAVORITE
                         putExtra(PlayerService.EXTRA_STATION_ID, stationId)
                         putExtra(
@@ -156,29 +155,27 @@ class NotificationCreator(private val context: Context) {
         return this
     }
 
-    fun createMediaStyle(
-        station: RadioStation,
-        sessionToken: MediaSession.Token
-    ): NotificationCreator {
-        notificationBuilder = Notification.Builder(
-            context,
-            PlayerService.NOTIFICATION_CHANNEL_DEFAULT
-        )
-            .setStyle(
-                Notification.MediaStyle()
-                    .setShowActionsInCompactView(1, 2, 3)
-                    .setMediaSession(sessionToken)
+    companion object {
+        fun createNotification(
+            context: Context,
+            station: RadioStation,
+            sessionToken: MediaSession.Token
+        ) = PlayerWidgetNotificationFactory(context).apply {
+            notificationBuilder = Notification.Builder(
+                context,
+                PlayerService.NOTIFICATION_CHANNEL_DEFAULT
             )
-            .setSmallIcon(R.drawable.ic_player_play_normal)
-            .setLargeIcon(BitmapFactory.decodeFile(station.imageUrl))
-            .setContentTitle(station.title)
-            .setContentText(station.stationId)
+                .setStyle(
+                    Notification.MediaStyle()
+                        .setShowActionsInCompactView(1, 2, 3)
+                        .setMediaSession(sessionToken)
+                )
+                .setSmallIcon(applicationIcon)
+                .setLargeIcon(BitmapFactory.decodeFile(station.imageUrl))
+                .setContentTitle(station.title)
+                .setContentText(station.stationId)
 
-        return this
+            intent = Intent(context, PlayerService::class.java)
+        }
     }
-
-    fun build(): Notification? {
-        return notificationBuilder?.build()
-    }
-
 }

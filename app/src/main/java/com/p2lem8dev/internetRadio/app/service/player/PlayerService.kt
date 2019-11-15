@@ -1,7 +1,6 @@
 package com.p2lem8dev.internetRadio.app.service.player
 
 import android.app.*
-import android.content.Context
 import android.content.Intent
 import android.media.session.MediaController
 import android.media.session.MediaSession
@@ -10,7 +9,6 @@ import android.net.Uri
 import android.os.Binder
 import android.os.IBinder
 import android.util.Log
-import android.widget.Toast
 import com.google.android.exoplayer2.*
 import com.google.android.exoplayer2.audio.AudioAttributes
 import com.google.android.exoplayer2.extractor.DefaultExtractorsFactory
@@ -18,11 +16,9 @@ import com.google.android.exoplayer2.source.ExtractorMediaSource
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
 import com.google.android.exoplayer2.util.Util
-import com.google.gson.Gson
 import com.p2lem8dev.internetRadio.app.MainActivity
-import com.p2lem8dev.internetRadio.app.service.NotificationCreator
+import com.p2lem8dev.internetRadio.app.service.NotificationFactory
 import com.p2lem8dev.internetRadio.app.utils.Playlist
-import com.p2lem8dev.internetRadio.database.radio.RadioDatabase
 import com.p2lem8dev.internetRadio.database.radio.entities.RadioStation
 import com.p2lem8dev.internetRadio.net.repository.RadioRepository
 import com.p2lem8dev.internetRadio.net.repository.SessionRepository
@@ -243,8 +239,8 @@ class PlayerService : Service() {
         check(!playlist.isEmpty()) { IllegalStateException("Playlist is empty") }
 
         // Create notification builder
-        val notification = NotificationCreator(applicationContext)
-            .createMediaStyle(stationData!!, mediaSession.sessionToken)
+        val notification = NotificationFactory(applicationContext)
+            .createPlayerWidgetNotification(stationData!!, mediaSession.sessionToken)
 
         // Close
         notification.addActionClose()
@@ -263,19 +259,13 @@ class PlayerService : Service() {
         )
 
         // show notification
-        startForeground(1, notification.build())
+        startForeground(NotificationFactory.NOTIFICATION_PLAYER_ID, notification.build())
     }
 
     private fun createOrUpdateNotificationChannel() {
-        val notificationManager =
-            getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-
-        notificationManager.createNotificationChannel(
-            NotificationChannel(
-                NOTIFICATION_CHANNEL_DEFAULT,
-                "Player",
-                NotificationManager.IMPORTANCE_LOW
-            )
+        NotificationFactory.registerNotificationChannel(
+            applicationContext,
+            NotificationFactory.NotificationChannelType.PlayerWidget
         )
     }
 
