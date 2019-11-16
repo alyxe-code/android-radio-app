@@ -30,7 +30,7 @@ class RadioStationFactory {
             )
         }
 
-        fun fromBaseInfo(
+        fun fromBaseRadioInfo(
             radio: BaseRadioInfo,
             isFavorite: Boolean = false,
             imageUrl: String? = null

@@ -17,12 +17,12 @@ class SyncViewModel(application: Application) : AndroidViewModel(application) {
 
     fun sync() {
 
-        val syncService = SyncService.getInstance()
-        if (syncService != null) {
-            Log.d("SYNC_BG_FG", "Service is working")
-        } else {
-            SyncService.start(getApplication<Application>().applicationContext)
-        }
+//        val syncService = SyncService.getInstance()
+//        if (syncService != null) {
+//            Log.d("SYNC_BG_FG", "Service is working")
+//        } else {
+//            SyncService.start(getApplication<Application>().applicationContext)
+//        }
 
     }
 }

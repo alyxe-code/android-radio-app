@@ -19,26 +19,13 @@
             android:id="@+id/thumb"
             android:layout_width="260dp"
             android:layout_height="260dp"
-            android:layout_marginTop="52dp"
+            android:layout_marginTop="32dp"
             app:image_url="@{viewModel.stationData.imageUrl}"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintHorizontal_bias="0.491"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             tools:background="@tools:sample/avatars" />
-
-        <TextView
-            android:id="@+id/title"
-            style="@style/TextAppearance.AppCompat.Headline"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="64dp"
-            android:text="@{viewModel.stationData.title}"
-            android:textAlignment="center"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/thumb"
-            tools:text="Radio MSC" />
 
         <SeekBar
             android:id="@+id/sound_volume"
@@ -54,6 +41,7 @@
         <ImageButton
             android:id="@+id/btn_play"
             style="@style/PlayerButtons.PlayStop"
+            android:layout_marginBottom="32dp"
             android:background="@{ viewModel.isPlaying() ? @drawable/ic_player_stop_normal : @drawable/ic_player_play_normal }"
             android:onClick="@{() -> viewModel.handleClickPlayStop()}"
             app:layout_constraintBottom_toBottomOf="parent"
@@ -77,6 +65,90 @@
             app:layout_constraintBottom_toBottomOf="@+id/btn_play"
             app:layout_constraintEnd_toStartOf="@+id/btn_play"
             app:layout_constraintTop_toTopOf="@+id/btn_play" />
+
+        <TextView
+            android:id="@+id/location"
+            style="@style/TextAppearance.AppCompat.Headline"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="32dp"
+            android:text="Country - Region - City"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/thumb" />
+
+        <TextView
+            android:id="@+id/genres"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="Pop - Hip Hop - R'n'B"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/location"
+            style="@style/TextAppearance.AppCompat.Body1"/>
+
+        <TextView
+            android:id="@+id/language"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="English"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/genres"
+            style="@style/TextAppearance.AppCompat.Subhead"/>
+
+        <TextView
+            android:id="@+id/listeners"
+            style="@style/TextAppearance.AppCompat.Body2"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="32dp"
+            android:text="9999"
+            app:layout_constraintBottom_toTopOf="@+id/sound_volume"
+            app:layout_constraintEnd_toStartOf="@+id/space"
+            app:layout_constraintStart_toStartOf="parent" />
+
+        <TextView
+            android:id="@+id/votes"
+            style="@style/TextAppearance.AppCompat.Body2"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="32dp"
+            android:text="9999"
+            app:layout_constraintBottom_toTopOf="@+id/sound_volume"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toEndOf="@+id/space" />
+
+        <ImageView
+            android:id="@+id/listeners_icon"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:layout_marginBottom="16dp"
+            app:layout_constraintBottom_toTopOf="@+id/listeners"
+            app:layout_constraintEnd_toEndOf="@+id/listeners"
+            app:layout_constraintStart_toStartOf="@+id/listeners"
+            android:background="@drawable/ic_headphones"/>
+
+        <ImageView
+            android:id="@+id/votes_icon"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:layout_marginBottom="16dp"
+            app:layout_constraintBottom_toTopOf="@+id/votes"
+            app:layout_constraintEnd_toEndOf="@+id/votes"
+            app:layout_constraintStart_toStartOf="@+id/votes"
+            android:background="@drawable/ic_favorite_white_24dp"/>
+
+        <Space
+            android:id="@+id/space"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:layout_constraintBottom_toTopOf="@+id/sound_volume"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent" />
+
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 </layout>

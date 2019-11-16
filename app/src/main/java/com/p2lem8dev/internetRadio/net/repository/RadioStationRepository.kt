@@ -66,52 +66,141 @@ class RadioStationRepository(
         return station
     }
 
-    /**
-     * Synchronize database with API stored radio stations
-     * @param imagesSaveDir Destination path to save images
-     * @param onLoad Every time when a station has been found and validated
-     * @param onSave Every time when a station is going to be saved to database
-     * @param updateIfExists If station row was found in database - ignore
-     */
-    suspend fun sync(
-        imagesSaveDir: String,
-        updateIfExists: Boolean = true,
-        onLoad: ((station: BaseRadioInfo) -> Unit)? = null,
-        onSave: ((station: RadioStation) -> Unit)? = null
+
+    suspend fun loadRadiosFromAllPages(
+        onlyRunning: Boolean,
+        saveImagesDirectory: String,
+        onNext: (suspend (station: RadioStation) -> Unit)?
     ) {
-        stationsDao.deleteAll()
+        var pageIndex = 0
+        while (true) {
+            val radios = loadRadiosFromPage(pageIndex) ?: break
+            pageIndex++
 
-        // when a station has been found it must be filled and added to database
-        loadAllStations(true) saveStation@{
-            try {
-                onLoad?.invoke(it)
-
-                val station = fillRadioStation(it.id) ?: return@saveStation
-                val dbStation = stationsDao.findByStationId(it.id)
-                if (dbStation != null) {
-                    if (!updateIfExists) {
-                        return@saveStation
-                    }
-                    station.id = dbStation.id
-                    station.isFavorite = dbStation.isFavorite
-                }
-
-                val imagePath = downloadStationImage(it.id, imagesSaveDir)
-                if (imagePath != null) {
-                    station.imageUrl = imagePath
-                }
-
-                onSave?.invoke(station)
-                createOrUpdateStation(station)
-            } catch (e: Exception) {
-                Log.wtf(
-                    "SYNC_SAVE",
-                    "Station#${it.id} ${it.title} thrown exception ${e.message} \n" +
-                            e.stackTrace.joinToString("\n")
-                )
+            GlobalScope.launch {
+                handleLoadedPage(radios, onlyRunning, saveImagesDirectory, onNext)
             }
         }
     }
+
+    private suspend fun loadRadiosFromPage(page: Int): List<BaseRadioInfo>? {
+        var radios = listOf<BaseRadioInfo>()
+        withContext(context = Dispatchers.IO) {
+            radios = api.getPage(page)
+        }
+        return if (radios.isEmpty()) null
+        else radios
+    }
+
+    private suspend fun handleLoadedPage(
+        pageRadios: List<BaseRadioInfo>,
+        onlyRunning: Boolean,
+        saveImagesDirectory: String,
+        onNext: (suspend (station: RadioStation) -> Unit)?
+    ) {
+        pageRadios
+            .mapNotNull { filterLoadedRadios(it, onlyRunning) }
+            .map { RadioStationFactory.fromBaseRadioInfo(it) }
+            .map { it.apply { imageUrl = downloadRadioImage(it.stationId, saveImagesDirectory) } }
+            .forEach {
+                createOrUpdateStationBase(it)
+                onNext?.invoke(it)
+            }
+    }
+
+    private suspend fun filterLoadedRadios(
+        baseRadio: BaseRadioInfo,
+        onlyRunning: Boolean
+    ): BaseRadioInfo? {
+        val links = arrayListOf<Link>()
+        baseRadio.links.forEach { link ->
+            Log.d("SYNC", "Trying link ${link.url}")
+            withContext(context = Dispatchers.IO) {
+                URLConverterFactory.extract(
+                    link.url,
+                    onlyRunning,
+                    urlConverterFactories
+                )
+                    ?.minBy { URLUtil.isHttpsUrl(it) }
+                    ?.let { links.add(Link(it, link.bitrate, link.app)) }
+            }
+        }
+        return if (links.isEmpty()) null
+        else baseRadio
+    }
+
+
+    private var canContinueLoadPages = true
+
+    suspend fun loadAllStationsAsync(
+        onlyRunning: Boolean,
+        saveImages: Boolean,
+        saveImagesDirectory: String? = null,
+        onNext: (suspend (station: BaseRadioInfo) -> Unit)?
+    ) {
+        var pageIndex = 0
+        val unhandledRadios = arrayListOf<BaseRadioInfo>()
+        while (true) {
+            if (!canContinueLoadPages) break
+
+            // load next page
+            GlobalScope.launch(context = Dispatchers.IO) {
+
+                var pageStations: List<BaseRadioInfo>
+
+                // ensure that every page is received
+                while (true) {
+                    try {
+                        pageStations = api.getPage(pageIndex)
+                        break
+                    } catch (e: Exception) {
+                        InternetConnectionTester.waitConnection()
+                    }
+                }
+
+                if (pageStations.isEmpty()) {
+                    canContinueLoadPages = false
+                    return@launch
+                }
+
+                val toDB = arrayListOf<BaseRadioInfo>()
+
+                // handle received page stations
+                pageStations.forEach { baseRadio ->
+                    val links = arrayListOf<Link>()
+                    baseRadio.links.forEach { link ->
+                        Log.d("SYNC", "Trying link ${link.url}")
+                        URLConverterFactory.extract(
+                            link.url,
+                            onlyRunning,
+                            urlConverterFactories
+                        )
+                            ?.minBy { URLUtil.isHttpsUrl(it) }
+                            ?.let { links.add(Link(it, link.bitrate, link.app)) }
+                    }
+
+                    if (links.isNotEmpty()) {
+                        toDB.add(baseRadio)
+                    }
+                }
+
+                toDB.forEach { baseRadio ->
+                    val radioStation = RadioStationFactory.fromBaseRadioInfo(baseRadio)
+
+                    if (saveImages && saveImagesDirectory != null) {
+                        val imageURL = downloadRadioImage(baseRadio.id, saveImagesDirectory)
+                        radioStation.imageUrl = imageURL
+                    }
+
+                    createOrUpdateStationBase(radioStation)
+                    onNext?.invoke(baseRadio)
+                }
+            }
+
+            pageIndex++
+        }
+    }
+
 
     /**
      * Load all stations via API service
@@ -124,11 +213,26 @@ class RadioStationRepository(
         onNext: (suspend (station: BaseRadioInfo) -> Unit)? = null
     ) {
         var pageIndex = 0
+        val unhandledRadios = arrayListOf<BaseRadioInfo>()
         while (true) {
             var pageStations: List<BaseRadioInfo>
             while (true) {
                 try {
                     pageStations = api.getPage(pageIndex)
+                    pageStations.forEach {
+                        try {
+                            handleStationLoaded(
+                                it,
+                                onlyRunning,
+                                downloadImages,
+                                downloadDestinationDirectory,
+                                onNext
+                            )
+                        } catch (e: Exception) {
+                            unhandledRadios.add(it)
+                        }
+                    }
+
                     pageIndex++
                     break
                 } catch (e: Exception) {
@@ -137,56 +241,89 @@ class RadioStationRepository(
             }
             Log.d("SYNC", "Load page $pageIndex | found ${pageStations.size} stations")
             if (pageStations.isEmpty()) break
-            pageStations.forEach { station ->
-                GlobalScope.launch {
-                    Log.d("SYNC", "Loading ${station.id} ${station.title}")
-                    try {
-                        val links = arrayListOf<Link>()
-                        station.links.forEach { link ->
-                            Log.d("SYNC", "Trying link ${link.url}")
-                            URLConverterFactory.extract(
-                                link.url,
-                                onlyRunning,
-                                urlConverterFactories
-                            )
-                                ?.minBy { URLUtil.isHttpsUrl(it) }
-                                ?.let { links.add(Link(it, link.bitrate, link.app)) }
+            Thread.sleep(1)
+        }
+    }
+
+    private var toDatabaseRadios = ArrayList<BaseRadioInfo>()
+
+    private fun addToDBQueue(
+        radio: BaseRadioInfo,
+        downloadImages: Boolean = true,
+        downloadDestinationDirectory: String? = null,
+        onNext: (suspend (station: BaseRadioInfo) -> Unit)?
+    ) {
+        toDatabaseRadios.add(radio)
+        if (toDatabaseRadios.size == 10) {
+            GlobalScope.launch {
+                val saveItems = toDatabaseRadios
+                toDatabaseRadios.forEach {
+                    GlobalScope.launch(context = Dispatchers.IO) {
+                        val radioStation = RadioStationFactory.fromBaseRadioInfo(it)
+
+                        if (downloadImages && downloadDestinationDirectory != null) {
+                            val imageUrl = downloadRadioImage(it.id, downloadDestinationDirectory)
+                            radioStation.imageUrl = imageUrl
                         }
-                        if (links.isNotEmpty()) {
-                            Log.d("SYNC", "Saving station ${station.id} ${station.title}")
-                            station.links = links
 
-                            val radioStation = RadioStationFactory.fromBaseInfo(station)
-
-                            if (downloadImages && downloadDestinationDirectory != null) {
-                                val imageUrl = downloadStationImage(station.id, downloadDestinationDirectory)
-                                radioStation.imageUrl = imageUrl
-                            }
-
-                            createOrUpdateStation(radioStation)
-                            onNext?.invoke(station)
-                        } else {
-                            Log.d("SYNC", "Ignore station ${station.id} ${station.title}")
-                        }
-                    } catch (e: Exception) {
-                        Log.d(
-                            "SYNC",
-                            "LOAD | Station ${station.id} thrown exception\n" +
-                                    "Message: ${e.message}\n" +
-                                    e.stackTrace.joinToString("\n")
-                        )
+                        createOrUpdateStation(radioStation)
+                        onNext?.invoke(it)
                     }
                 }
             }
-            Thread.sleep(1)
+            toDatabaseRadios = arrayListOf()
+        }
+    }
+
+    private fun handleStationLoaded(
+        station: BaseRadioInfo,
+        onlyRunning: Boolean,
+        downloadImages: Boolean = true,
+        downloadDestinationDirectory: String? = null,
+        onNext: (suspend (station: BaseRadioInfo) -> Unit)?
+    ) = GlobalScope.launch(context = Dispatchers.IO) {
+        Log.d("SYNC", "Loading ${station.id} ${station.title}")
+        try {
+            val links = arrayListOf<Link>()
+            station.links.forEach { link ->
+                Log.d("SYNC", "Trying link ${link.url}")
+                URLConverterFactory.extract(
+                    link.url,
+                    onlyRunning,
+                    urlConverterFactories
+                )
+                    ?.minBy { URLUtil.isHttpsUrl(it) }
+                    ?.let { links.add(Link(it, link.bitrate, link.app)) }
+            }
+            if (links.isNotEmpty()) {
+                Log.d("SYNC", "Saving station ${station.id} ${station.title}")
+                station.links = links
+                addToDBQueue(
+                    station,
+                    downloadImages,
+                    downloadDestinationDirectory,
+                    onNext
+                )
+            } else {
+                Log.d("SYNC", "Ignore station ${station.id} ${station.title}")
+            }
+        } catch (e: Exception) {
+            Log.d(
+                "SYNC",
+                "LOAD | Station ${station.id} thrown exception\n" +
+                        "Message: ${e.message}\n" +
+                        e.stackTrace.joinToString("\n")
+            )
         }
     }
 
 
     /**
-     * Get full radio station data
+     * Load full version of radio station
+     * May consume some time
+     * After station was loaded it will be saved
      */
-    private suspend fun fillRadioStation(stationId: String): RadioStation? {
+    suspend fun loadOrUpdateRadioStation(stationId: String): RadioStation? {
         var radio: FullRadioInfo
         while (true) {
             try {
@@ -208,7 +345,7 @@ class RadioStationRepository(
      * @param destPath Destination path to save image
      * @return Downloaded image path
      */
-    private suspend fun downloadStationImage(
+    private suspend fun downloadRadioImage(
         stationId: String,
         destPath: String,
         force: Boolean = false
@@ -223,37 +360,41 @@ class RadioStationRepository(
                 dir.mkdir()
             } else return null
         }
-        // get image via API
-        var stationImage: ResponseBody
-        while (true) {
-            try {
-                stationImage = api.getStationImage2(stationId)
-                break
-            } catch (e: Exception) {
-                // wait connection and retry to download image
-                InternetConnectionTester.waitConnection()
-            }
-        }
-        // validate received content type
-        var contentType: MediaType?
-        while (true) {
-            try {
-                contentType = stationImage.contentType()
-                break
-            } catch (e: Exception) {
-                InternetConnectionTester.waitConnection()
-            }
-        }
-        if (contentType == null || contentType.type() != "image") {
-            return null
-        }
-        // save image on disk
-        var filename: String? = "$destPath/$stationId.${contentType.subtype()}"
+        var filename: String? = null
         withContext(context = Dispatchers.IO) {
-            try {
-                File(filename!!).writeBytes(stationImage.bytes())
-            } catch (e: Exception) {
-                filename = null
+            // get image via API
+            var stationImage: ResponseBody
+            while (true) {
+                try {
+                    stationImage = api.getStationImage2(stationId)
+                    break
+                } catch (e: Exception) {
+                    // wait connection and retry to download image
+                    InternetConnectionTester.waitConnection()
+                }
+            }
+            // validate received content type
+            var contentType: MediaType?
+            while (true) {
+                try {
+                    contentType = stationImage.contentType()
+                    break
+                } catch (e: Exception) {
+                    InternetConnectionTester.waitConnection()
+                }
+            }
+            if (contentType == null || contentType.type() != "image") {
+                return@withContext
+            }
+            // save image on disk
+            filename = "$destPath/$stationId.${contentType.subtype()}"
+            withContext(context = Dispatchers.IO) {
+                try {
+                    File(filename!!).writeBytes(stationImage.bytes())
+                } catch (e: Exception) {
+                    filename = null
+                    return@withContext
+                }
             }
         }
         return filename
@@ -265,15 +406,33 @@ class RadioStationRepository(
      */
     private suspend fun createOrUpdateStation(station: RadioStation): Boolean {
         val dbStation = stationsDao.findByStationId(station.stationId)
-        if (dbStation == null) {
+        return if (dbStation == null) {
             stationsDao.insert(station)
-            return true
+            true
         } else {
             station.id = dbStation.id
             station.isFavorite = dbStation.isFavorite
             stationsDao.update(station)
-            return false
+            false
         }
+    }
+
+    private suspend fun createOrUpdateStationBase(station: RadioStation): Boolean {
+        val dbStation = stationsDao.findByStationId(station.stationId)
+        return if (dbStation == null) {
+            stationsDao.insert(station)
+            true
+        } else {
+            dbStation.title = station.title
+            dbStation.links = station.links
+            dbStation.imageUrl = station.imageUrl
+            stationsDao.update(dbStation)
+            false
+        }
+    }
+
+    suspend fun deleteByStationId(stationId: String) {
+        stationsDao.delete(stationId)
     }
 
     companion object {

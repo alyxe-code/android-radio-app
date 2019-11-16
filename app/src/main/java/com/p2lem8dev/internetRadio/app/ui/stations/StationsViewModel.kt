@@ -1,8 +1,11 @@
 package com.p2lem8dev.internetRadio.app.ui.stations
 
+import android.content.Context
+import android.content.Intent
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import com.p2lem8dev.internetRadio.app.service.sync.SyncService
 import com.p2lem8dev.internetRadio.database.radio.entities.RadioStation
 import com.p2lem8dev.internetRadio.net.api.BaseRadioInfo
 import com.p2lem8dev.internetRadio.net.repository.RadioStationRepository
@@ -21,6 +24,8 @@ class StationsViewModel : ViewModel() {
 
     val playlistSelectorAny: Boolean
         get() = _playlistSelectorAny
+
+    var isLoading = false
 
     fun usePlaylist(onlyFavorite: Boolean): StationsViewModel {
         _playlistSelectorAny = onlyFavorite
@@ -59,14 +64,13 @@ class StationsViewModel : ViewModel() {
         return getStations().value?.find { it.stationId == stationId }
     }
 
-    suspend fun loadStations(imagesDownloadDirectory: String, onLoad: (suspend (BaseRadioInfo) -> Unit)? = null) =
-        withContext(context = Dispatchers.IO) {
-            RadioStationRepository.get().loadAllStations(
-                onlyRunning = true,
-                downloadImages = true,
-                downloadDestinationDirectory = imagesDownloadDirectory,
-                onNext = onLoad)
+    suspend fun loadStations(context: Context, imagesDownloadDirectory: String, onLoad: (() -> Unit)? = null) {
+        withContext(context = Dispatchers.Main) {
+            SyncService.start(context, imagesDownloadDirectory) {
+                onLoad?.invoke()
+            }
         }
+    }
 
     suspend fun getAllStations() = RadioStationRepository.get().getAllStations()
 

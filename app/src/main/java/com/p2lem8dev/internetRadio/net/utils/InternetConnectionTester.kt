@@ -9,6 +9,7 @@ import java.lang.Exception
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.Socket
+import java.net.URL
 
 class InternetConnectionTester {
 
@@ -51,7 +52,6 @@ class InternetConnectionTester {
         val sock = Socket()
         sock.connect(InetSocketAddress(hostname, TEST_PORT))
         sock.close()
-        Log.d("SYNC_NET", "Connected!")
         true
     } catch (e: Exception) {
         Log.w(
@@ -77,8 +77,6 @@ class InternetConnectionTester {
             return instance!!
         }
 
-        fun isInternetAvailable() = getInstance().isConnectedAndActive
-
         fun waitConnection() {
             if (getInstance().isConnectedAndActive) return
             var connection: Boolean
@@ -87,6 +85,7 @@ class InternetConnectionTester {
                 if (connection) break
                 Thread.sleep(TEST_TIME_INTERVAL / 10)
             }
+            getInstance().stop()
         }
     }
 }

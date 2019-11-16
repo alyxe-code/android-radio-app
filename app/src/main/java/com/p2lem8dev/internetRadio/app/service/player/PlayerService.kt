@@ -9,21 +9,28 @@ import android.net.Uri
 import android.os.Binder
 import android.os.IBinder
 import android.util.Log
+import android.widget.Toast
 import com.google.android.exoplayer2.*
 import com.google.android.exoplayer2.audio.AudioAttributes
 import com.google.android.exoplayer2.extractor.DefaultExtractorsFactory
 import com.google.android.exoplayer2.source.ExtractorMediaSource
+import com.google.android.exoplayer2.source.TrackGroupArray
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
+import com.google.android.exoplayer2.trackselection.TrackSelectionArray
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
 import com.google.android.exoplayer2.util.Util
 import com.p2lem8dev.internetRadio.app.MainActivity
 import com.p2lem8dev.internetRadio.app.utils.notification.NotificationFactory
 import com.p2lem8dev.internetRadio.app.utils.Playlist
+import com.p2lem8dev.internetRadio.database.radio.RadioDatabase_Impl
 import com.p2lem8dev.internetRadio.database.radio.entities.RadioStation
 import com.p2lem8dev.internetRadio.net.repository.RadioStationRepository
 import com.p2lem8dev.internetRadio.net.repository.SessionRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.lang.Exception
 import java.lang.IllegalArgumentException
 import java.lang.IllegalStateException
 
@@ -286,7 +293,10 @@ class PlayerService : Service() {
 
         // leave issue when several players are playing
         mExoPlayer?.let {
-            it.stop(true)
+            try {
+                it.stop(true)
+            } catch (e: Exception) {
+            }
             it.release()
             mExoPlayer = null
         }
@@ -302,6 +312,52 @@ class PlayerService : Service() {
                 .build()
             it.prepare(mediaSource)
             it.playWhenReady = true
+            it.addListener(object : Player.EventListener {
+                override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters?) {
+                }
+
+                override fun onSeekProcessed() {
+                }
+
+                override fun onTracksChanged(
+                    trackGroups: TrackGroupArray?,
+                    trackSelections: TrackSelectionArray?
+                ) {
+                }
+
+                override fun onPlayerError(error: ExoPlaybackException?) {
+                    GlobalScope.launch {
+                        requireNotNull(stationId)
+                        playlist.removeByStationId(stationId!!)
+                        RadioStationRepository.get().deleteByStationId(stationId!!)
+                        stationData = playlist.current
+                        stationId = stationData!!.stationId
+                        handleActionPlay()
+                        withContext(context = Dispatchers.Main) {
+                            Toast.makeText(applicationContext, "Unable to play radio", Toast.LENGTH_LONG).show()
+                        }
+                    }
+                }
+
+                override fun onLoadingChanged(isLoading: Boolean) {
+                }
+
+                override fun onPositionDiscontinuity(reason: Int) {
+                }
+
+                override fun onRepeatModeChanged(repeatMode: Int) {
+                }
+
+                override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
+                }
+
+                override fun onTimelineChanged(timeline: Timeline?, manifest: Any?, reason: Int) {
+                }
+
+                override fun onPlayerStateChanged(playWhenReady: Boolean, playbackState: Int) {
+                }
+
+            })
         }
     }
 

@@ -4,12 +4,15 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.TextView
+import androidx.appcompat.app.ActionBar
 import androidx.databinding.DataBindingUtil
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.p2lem8dev.internetRadio.R
 import com.p2lem8dev.internetRadio.app.InternetRadioApp
+import com.p2lem8dev.internetRadio.app.MainActivity
 import com.p2lem8dev.internetRadio.app.ui.stations.StationsFragment
 import com.p2lem8dev.internetRadio.app.ui.stations.StationsListAdapter
 import com.p2lem8dev.internetRadio.app.ui.stations.StationsViewModel
@@ -20,11 +23,11 @@ import com.p2lem8dev.internetRadio.databinding.LayoutStationsBinding
 import kotlinx.coroutines.*
 
 class HomeFragment : StationsFragment(), ListActionHandler, SwipeRefreshLayout.OnRefreshListener {
-        private lateinit var layoutStationsBinding: LayoutStationsBinding
+    private lateinit var layoutStationsBinding: LayoutStationsBinding
     private lateinit var stationsListAdapter: StationsListAdapter
     private lateinit var stationsViewModel: StationsViewModel
 
-    private var jobStopRefresh: Job? = null
+    private var countStationsLoaded: Int = 0
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -41,6 +44,15 @@ class HomeFragment : StationsFragment(), ListActionHandler, SwipeRefreshLayout.O
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
 
+        (activity as MainActivity).let { activity ->
+            activity.supportActionBar?.let {
+                it.displayOptions = ActionBar.DISPLAY_SHOW_CUSTOM
+                it.setCustomView(R.layout.actionbar_layout)
+                (it.customView.findViewById(R.id.actionbar_title) as TextView)
+                    .text = getString(R.string.title_home)
+            }
+        }
+
         stationsListAdapter = StationsListAdapter(false, this)
         layoutStationsBinding.recyclerView.adapter = stationsListAdapter
 
@@ -50,18 +62,20 @@ class HomeFragment : StationsFragment(), ListActionHandler, SwipeRefreshLayout.O
             Thread.sleep(400)
             stationsViewModel.allStations.value.let {
                 if (it == null || it.isEmpty()) {
-                    startStopRefreshJob(false)
-                    stationsViewModel.loadStations(getImagesSaveDirectory())
+                    loadStations()
                 }
             }
         }
         stationsViewModel.allStations.observe(activity!!, Observer {
-            if (it.size > MAX_STATIONS_MUST_BE_LOADED) {
-                jobStopRefresh?.cancel()
-            }
+            countStationsLoaded = it.size
             stationsListAdapter.postData(it)
             layoutStationsBinding.notifyChange()
         })
+    }
+
+    override fun onPause() {
+        super.onPause()
+        jobHideRefresh?.cancel()
     }
 
     override fun onSelect(station: RadioStation) {
@@ -82,39 +96,47 @@ class HomeFragment : StationsFragment(), ListActionHandler, SwipeRefreshLayout.O
     }
 
     override fun onRefresh() {
+        loadStations()
+    }
+
+    private fun loadStations() {
         GlobalScope.launch {
-            startStopRefreshJob(true)
-            stationsViewModel.loadStations(getImagesSaveDirectory())
+            jobHideRefresh?.cancel()
+            if (!stationsViewModel.isLoading) {
+                stationsViewModel.loadStations(context!!, getImagesSaveDirectory())
+            }
+            startJobHideRefresh()
         }
     }
 
-    private suspend fun startStopRefreshJob(isRefreshing: Boolean) {
-        if (!isRefreshing) {
-            withContext(context = Dispatchers.Main) {
-                layoutStationsBinding.swipeRefresh.isRefreshing = true
-            }
-        }
-        jobStopRefresh = GlobalScope.launch {
-            while (true) {
-                stationsViewModel.allStations.value.let {
-                    if (it != null && it.size > MAX_STATIONS_MUST_BE_LOADED) {
-                        withContext(context = Dispatchers.Main) {
-                            layoutStationsBinding.swipeRefresh.isRefreshing = false
-                        }
-                        jobStopRefresh?.cancel()
-                    }
+    private var jobHideRefresh: Job? = null
+
+    private fun startJobHideRefresh() {
+        jobHideRefresh = GlobalScope.launch {
+            if (!layoutStationsBinding.swipeRefresh.isRefreshing) {
+                withContext(context = Dispatchers.Main) {
+                    layoutStationsBinding.swipeRefresh.isRefreshing = true
                 }
             }
+            while (true) {
+                if (stationsViewModel.allStations.value != null &&
+                    stationsViewModel.allStations.value!!.size >= HIDE_REFRESH_STATIONS_MAX) {
+                    break
+                }
+                Thread.sleep(HIDE_REFRESH_TIMEOUT / 10)
+                break
+            }
+            stationsViewModel.isLoading = false
         }
-        jobStopRefresh?.start()
     }
 
 
     private fun getImagesSaveDirectory() =
         (activity!!.application as InternetRadioApp).getImagesSaveDirectory()
 
-    companion object {
-        const val MAX_STATIONS_MUST_BE_LOADED = 6
-    }
 
+    companion object {
+        const val HIDE_REFRESH_TIMEOUT = 2000L
+        const val HIDE_REFRESH_STATIONS_MAX = 10
+    }
 }

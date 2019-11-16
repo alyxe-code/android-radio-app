@@ -31,6 +31,19 @@ open class NotificationFactory(protected val context: Context) {
         return this
     }
 
+    fun createInfiniteLoadingType(title: String, text: String?): NotificationFactory {
+        notificationBuilder = Notification.Builder(context, NOTIFICATION_SYNC_CHANNEL_ID)
+            .setSmallIcon(applicationIcon)
+            .setContentTitle(title)
+            .setProgress(0, 0, true)
+
+        if (text != null) {
+            notificationBuilder?.setContentText(text)
+        }
+
+        return this
+    }
+
     fun createPlayerWidgetNotification(station: RadioStation, sessionToken: MediaSession.Token) =
         PlayerWidgetNotificationFactory.createNotification(context, station, sessionToken)
 

@@ -75,6 +75,24 @@ class Playlist {
         then?.invoke()
     }
 
+    fun remove(station: RadioStation): RadioStation {
+        return removeByStationId(station.stationId)
+    }
+
+    fun removeByStationId(stationId: String): RadioStation {
+        var idx = mQueue.indexOfFirst { it.stationId == stationId }
+        mQueue.removeAt(idx)
+        if (idx >= mQueue.size) {
+            idx = 0
+        }
+        if (idx < 0) {
+            idx = 0
+        }
+
+        mCurrentIndex = idx
+        return current
+    }
+
     companion object {
         fun createFrom(stations: List<RadioStation>, current: RadioStation? = null) =
             Playlist().apply {

@@ -5,11 +5,14 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.TextView
+import androidx.appcompat.app.ActionBar
 import androidx.databinding.DataBindingUtil
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import com.p2lem8dev.internetRadio.R
+import com.p2lem8dev.internetRadio.app.MainActivity
 import com.p2lem8dev.internetRadio.app.service.player.PlayerService
 import com.p2lem8dev.internetRadio.app.ui.stations.StationsFragment
 import com.p2lem8dev.internetRadio.app.ui.stations.StationsListAdapter
@@ -40,6 +43,15 @@ class SavedStationsFragment : StationsFragment(), ListActionHandler {
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
+
+        (activity as MainActivity).let { activity ->
+            activity.supportActionBar?.let {
+                it.displayOptions = ActionBar.DISPLAY_SHOW_CUSTOM
+                it.setCustomView(R.layout.actionbar_layout)
+                (it.customView.findViewById(R.id.actionbar_title) as TextView)
+                    .text = getString(R.string.title_saved_stations)
+            }
+        }
 
         stationsListAdapter = StationsListAdapter(false, this)
         layoutStationsBinding.recyclerView.adapter = stationsListAdapter

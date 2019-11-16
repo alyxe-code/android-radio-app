@@ -10,10 +10,9 @@ import android.graphics.drawable.Icon
 import android.os.IBinder
 import android.util.Log
 import com.p2lem8dev.internetRadio.R
-import com.p2lem8dev.internetRadio.app.InternetRadioApp
+import com.p2lem8dev.internetRadio.app.MainActivity
 import com.p2lem8dev.internetRadio.app.utils.notification.NotificationFactory
 import com.p2lem8dev.internetRadio.net.repository.RadioStationRepository
-import com.p2lem8dev.internetRadio.sync.SyncActivity
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 
@@ -33,8 +32,7 @@ class SyncService : Service() {
     public val isRunning: Boolean
         get() = _isRunning
 
-    private var savedStationsAmount: Int = 0
-    private var loadedStationsAmount: Int = 0
+    private var imagesDownloadDir: String? = null
 
     override fun onBind(intent: Intent?): IBinder? {
         return null
@@ -42,42 +40,42 @@ class SyncService : Service() {
 
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
 
+        imagesDownloadDir = intent.getStringExtra(EXTRA_IMAGES_DOWNLOAD_DIR)
+
         when (intent.action) {
-            ACTION_START -> handleActionStart()
+            ACTION_START_LOAD_ALL -> handleActionStartLoadAll()
+            ACTION_START_LOAD_BASE -> handleActionStartLoadBase()
             ACTION_STOP -> handleActionStop()
         }
         return START_STICKY
     }
 
-    private fun handleActionStart() {
+    private fun handleActionStartLoadAll() {
+        instance = this
+    }
+
+    private fun handleActionStartLoadBase() {
+        Log.d("SYNC_SERVICE", "Loading base...")
+        createOrUpdateNotification()
         GlobalScope.launch {
-            RadioStationRepository.get()
-            createOrUpdateNotification(loadedStationsAmount, savedStationsAmount)
-            RadioStationRepository.get().sync(
-                (application as InternetRadioApp).getImagesSaveDirectory(),
-                onLoad = {
-                    loadedStationsAmount++
-                    createOrUpdateNotification(loadedStationsAmount, savedStationsAmount)
-                },
-                onSave = {
-                    Log.d("SYNC_BG", "Saving station#${it.id} ${it.title}")
-                    savedStationsAmount++
-                }
-            )
+            RadioStationRepository.get().loadRadiosFromAllPages(
+                onlyRunning = true,
+                saveImagesDirectory = imagesDownloadDir!!
+            ) {
+                createOrUpdateNotification(it.title)
+                onNextLoaded?.invoke()
+            }
         }
         instance = this
     }
 
     private fun handleActionStop() {
-        stopForeground(false)
         stopSelf()
     }
 
-    private var isForeground = false
-
-    private fun createOrUpdateNotification(allAmount: Int, validAmount: Int) {
+    private fun createOrUpdateNotification(title: String? = null) {
         val notification = NotificationFactory(applicationContext)
-            .createTextStyle("Syncing", "ALL $allAmount | VALID $validAmount")
+            .createInfiniteLoadingType("Synchronization", title ?: "")
             .addAction(
                 Notification.Action.Builder(
                     Icon.createWithResource(applicationContext, R.drawable.ic_close_black_24dp),
@@ -92,37 +90,43 @@ class SyncService : Service() {
                     )
                 )
             )
-            .bindToActivity(SyncActivity::class.java)
+            .bindToActivity(MainActivity::class.java)
             .build()
 
-        if (isForeground) {
-            val notificationManager =
-                applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            notificationManager.notify(NotificationFactory.NOTIFICATION_SYNC_ID, notification)
-        } else {
-            NotificationFactory.registerNotificationChannel(
-                applicationContext,
-                NotificationFactory.NotificationChannelType.Synchronization
-            )
-            startForeground(NotificationFactory.NOTIFICATION_SYNC_ID, notification)
-            isForeground = true
-        }
+        NotificationFactory.registerNotificationChannel(
+            applicationContext,
+            NotificationFactory.NotificationChannelType.Synchronization
+        )
+
+        startForeground(NotificationFactory.NOTIFICATION_SYNC_ID, notification)
     }
 
     companion object {
-        const val ACTION_START = "action::start"
-        const val ACTION_STOP = "action:stop"
+        private const val ACTION_START_LOAD_ALL = "action::start::load_all"
+        private const val ACTION_START_LOAD_BASE = "action::start::load_base"
+        private const val ACTION_STOP = "action:stop"
+
+        private const val EXTRA_IMAGES_DOWNLOAD_DIR = "extra::images_download_dir"
 
         private var instance: SyncService? = null
         fun getInstance(): SyncService? {
             return instance
         }
 
-        fun start(context: Context) {
+        private var onNextLoaded: (() -> Unit)? = null
+
+        fun start(
+            context: Context,
+            imagesDownloadDir: String,
+            loadAll: Boolean = false,
+            onNextLoaded: (() -> Unit)? = null
+        ) {
             if (instance != null) return
             context.startForegroundService(Intent(context, SyncService::class.java).apply {
-                action = ACTION_START
+                action = if (loadAll) ACTION_START_LOAD_ALL else ACTION_START_LOAD_BASE
+                putExtra(EXTRA_IMAGES_DOWNLOAD_DIR, imagesDownloadDir)
             })
+            this.onNextLoaded = onNextLoaded
         }
 
         fun stop(context: Context) {

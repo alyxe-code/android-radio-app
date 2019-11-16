@@ -1,10 +1,12 @@
 package com.p2lem8dev.internetRadio.app.ui.player
 
 import android.util.Log
-import androidx.databinding.Observable
 import androidx.databinding.ObservableField
 import androidx.lifecycle.ViewModel
 import com.p2lem8dev.internetRadio.database.radio.entities.RadioStation
+import com.p2lem8dev.internetRadio.net.repository.RadioStationRepository
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 
 class PlayerViewModel : ViewModel() {
 
@@ -42,6 +44,16 @@ class PlayerViewModel : ViewModel() {
 
     fun hasPrevious(): Boolean {
         return true
+    }
+
+    fun setStation(radioStation: RadioStation) {
+        stationData.set(radioStation)
+        GlobalScope.launch {
+            val station = RadioStationRepository.get()
+                .loadOrUpdateRadioStation(radioStation.stationId)
+
+            stationData.set(station)
+        }
     }
 
 }

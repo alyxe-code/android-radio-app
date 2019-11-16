@@ -8,20 +8,21 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.SeekBar
+import android.widget.TextView
+import androidx.appcompat.app.ActionBar
 import androidx.databinding.DataBindingUtil
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import com.p2lem8dev.internetRadio.R
+import com.p2lem8dev.internetRadio.app.MainActivity
 import com.p2lem8dev.internetRadio.app.service.player.PlayerService
 import com.p2lem8dev.internetRadio.app.ui.stations.StationsViewModel
 import com.p2lem8dev.internetRadio.app.utils.Playlist
 import com.p2lem8dev.internetRadio.databinding.FragmentPlayerBinding
 import com.p2lem8dev.internetRadio.net.repository.RadioStationRepository
 import com.p2lem8dev.internetRadio.net.repository.SessionRepository
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
 import kotlin.math.roundToInt
 
 class PlayerFragment : Fragment() {
@@ -99,12 +100,15 @@ class PlayerFragment : Fragment() {
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
 
+        setActionBarTitle("")
+
         playerViewModel = ViewModelProvider(activity!!).get(PlayerViewModel::class.java)
         playerViewModel.setActivityCallback(mActivityCallback)
 
         stationsViewModel = ViewModelProvider(activity!!).get(StationsViewModel::class.java)
         stationsViewModel.selectedStation.observe(activity!!, Observer {
-            playerViewModel.stationData.set(it)
+            playerViewModel.setStation(it)
+            setActionBarTitle(it.title)
         })
 
         if (stationsViewModel.selectedStation.value == null) {
@@ -131,6 +135,10 @@ class PlayerFragment : Fragment() {
                     stationsViewModel.getStations().value?.first()?.let {
                         stationsViewModel.setSelected(it, updateSession = true, postValue = true)
                     }
+                }
+
+                withContext(context = Dispatchers.Main) {
+
                 }
             }
         }
@@ -203,6 +211,19 @@ class PlayerFragment : Fragment() {
     private fun setVolumeByUnits(volume: Int) {
         soundVolume = (volume * 100.0F / maxSoundVolume).roundToInt()
         binding.soundVolume.progress = soundVolume
+    }
+
+    private fun setActionBarTitle(title: String) {
+        activity?.let { activity ->
+            (activity as MainActivity).let { mainActivity ->
+                mainActivity.supportActionBar?.let {
+                    it.displayOptions = ActionBar.DISPLAY_SHOW_CUSTOM
+                    it.setCustomView(R.layout.actionbar_layout)
+                    (it.customView.findViewById(R.id.actionbar_title) as TextView)
+                        .text = title
+                }
+            }
+        }
     }
 }
 

@@ -5,14 +5,21 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.databinding.BindingAdapter
 import com.bumptech.glide.Glide
+import com.bumptech.glide.load.resource.bitmap.CenterCrop
+import com.bumptech.glide.load.resource.bitmap.CenterInside
+import com.bumptech.glide.load.resource.bitmap.FitCenter
+import com.bumptech.glide.load.resource.bitmap.RoundedCorners
+import com.bumptech.glide.request.RequestOptions
 
 
 @BindingAdapter("app:image_url")
 fun setImageViewByURL(imageView: ImageView, imageUrl: String?) {
     Glide.with(imageView.context)
         .load(imageUrl)
-        .centerCrop()
-        .circleCrop()
+        .apply(RequestOptions().apply {
+            transform(FitCenter())
+            transform(RoundedCorners(16))
+        })
         .into(imageView)
 }
 
@@ -29,14 +36,6 @@ fun setViewVisibleOnTrue(view: View, condition: Boolean) {
 @BindingAdapter("app:visibility_false")
 fun setViewVisibleOnFalse(view: View, condition: Boolean) {
     view.visibility = if (condition) View.GONE else View.VISIBLE
-}
-
-@BindingAdapter(
-    value = ["app:formatter_country", "app:formatter_region", "app:formatter_city"],
-    requireAll = true
-)
-fun setTextViewByLocation(textView: TextView, country: String?, region: String?, city: String?) {
-    textView.text = "$country - $region - $city"
 }
 
 @BindingAdapter("app:formatter_amount")
