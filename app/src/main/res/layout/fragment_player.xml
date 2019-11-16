@@ -40,22 +40,6 @@
             app:layout_constraintTop_toBottomOf="@+id/thumb"
             tools:text="Radio MSC" />
 
-        <TextView
-            android:id="@+id/location"
-            style="@style/TextAppearance.AppCompat.Subhead"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:textAlignment="center"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintHorizontal_bias="0.502"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/title"
-            app:formatter_country="@{viewModel.stationData.country}"
-            app:formatter_region="@{viewModel.stationData.region}"
-            app:formatter_city="@{viewModel.stationData.city}"
-            tools:text="Russia - Moscow" />
-
         <SeekBar
             android:id="@+id/sound_volume"
             android:layout_width="0dp"

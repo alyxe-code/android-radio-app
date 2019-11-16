@@ -14,8 +14,8 @@
 
     <style name="PlayerButtons" />
     <style name="PlayerButtons.PlayStop">
-        <item name="android:layout_width">40dp</item>
-        <item name="android:layout_height">40dp</item>
+        <item name="android:layout_width">52dp</item>
+        <item name="android:layout_height">52dp</item>
         <item name="android:layout_marginBottom">56dp</item>
         <item name="android:background">@drawable/ic_player_play_normal</item>
     </style>
