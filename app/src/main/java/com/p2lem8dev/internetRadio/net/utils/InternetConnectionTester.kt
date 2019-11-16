@@ -9,10 +9,8 @@ import java.lang.Exception
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.Socket
-import java.util.concurrent.TimeUnit
-import kotlin.random.Random
 
-class InternetConnectionTester(hostname: String? = null, port: Int? = null) {
+class InternetConnectionTester {
 
     private var _isConnectedAndActive: Boolean = false
     var isConnectedAndActive

@@ -24,7 +24,6 @@ class InternetRadioApp : Application() {
         val sessionDb = SessionDatabase.getInstance(applicationContext)
 
         RadioStationRepository.create(
-            applicationContext,
             radioDb.getRadioStationsDao(),
             mRadioAPI
         )

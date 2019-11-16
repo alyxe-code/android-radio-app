@@ -51,7 +51,7 @@ class SyncService : Service() {
 
     private fun handleActionStart() {
         GlobalScope.launch {
-            val repository = RadioStationRepository.get()
+            RadioStationRepository.get()
             createOrUpdateNotification(loadedStationsAmount, savedStationsAmount)
             RadioStationRepository.get().sync(
                 (application as InternetRadioApp).getImagesSaveDirectory(),

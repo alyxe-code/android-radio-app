@@ -109,7 +109,6 @@ class PlayerFragment : Fragment() {
 
         if (stationsViewModel.selectedStation.value == null) {
             GlobalScope.launch {
-                val id = SessionRepository.get().getCurrentSession().lastRunningStationId
                 SessionRepository.get().getCurrentSession().lastRunningStationId?.let { it ->
                     RadioStationRepository.get().findStation(it)?.let { station ->
                         stationsViewModel.setSelected(

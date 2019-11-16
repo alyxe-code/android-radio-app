@@ -1,6 +1,5 @@
 package com.p2lem8dev.internetRadio.net.repository
 
-import android.content.Context
 import android.util.Log
 import android.webkit.URLUtil
 import com.p2lem8dev.internetRadio.app.service.sync.extractors.ConverterFactory
@@ -281,7 +280,6 @@ class RadioStationRepository(
         private var mInstance: RadioStationRepository? = null
 
         fun create(
-            applicationContext: Context,
             stationsDao: RadioStationsDao,
             api: RadioAPI
         ) {
