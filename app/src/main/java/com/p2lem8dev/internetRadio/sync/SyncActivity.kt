@@ -28,11 +28,7 @@ class SyncActivity : AppCompatActivity() {
         syncViewModel = ViewModelProvider(this).get(SyncViewModel::class.java)
 
         GlobalScope.launch {
-            syncViewModel.sync(
-                applicationContext,
-                InternetRadioApp.RADIO_TOCHKA_API_HOST,
-                filesDir.absolutePath + "/stations"
-            )
+            syncViewModel.sync()
 //            startActivity(Intent(applicationContext, MainActivity::class.java))
 //            finish()
         }

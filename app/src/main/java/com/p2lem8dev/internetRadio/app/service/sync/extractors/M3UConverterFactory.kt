@@ -1,9 +1,12 @@
 package com.p2lem8dev.internetRadio.app.service.sync.extractors
 
+import android.util.Log
 import android.webkit.URLUtil
+import com.p2lem8dev.internetRadio.net.utils.InternetConnectionTester
 import java.lang.Exception
 import java.net.HttpURLConnection
 import java.net.URL
+import javax.net.ssl.HttpsURLConnection
 
 /**
  * Extract urls from audio/x-mpegurl
@@ -28,12 +31,22 @@ class M3UConverterFactory : ConverterFactory {
         } catch (e: Exception) {
             return null
         }
+
         val connection = url.openConnection() as HttpURLConnection
-        if (connection.responseCode != HttpURLConnection.HTTP_OK)
-            return null
+        while (true) {
+            try {
+                if (connection.responseCode != HttpURLConnection.HTTP_OK)
+                    return null
+                break
+            } catch (e: Exception) {
+                InternetConnectionTester.waitConnection()
+            }
+        }
 
         // filter m3u file strings to find valid urls
-        var urls = url.readText()
+        val text = readURLContent(url) ?: return null
+
+        var urls = text
             .split("\n")
             .asSequence()
             .map { it.trim() }
@@ -43,14 +56,7 @@ class M3UConverterFactory : ConverterFactory {
 
         // select only running servers
         if (onlyRunning) {
-            urls = urls.filter {
-                try {
-                    val connectionForFound = getConnection(it)
-                    connectionForFound != null && connectionForFound.responseCode == HttpURLConnection.HTTP_OK
-                } catch (e: Exception) {
-                    false
-                }
-            }
+            urls = urls.filter { URLConverterFactory.isRunning(it) }
         }
 
         return when {

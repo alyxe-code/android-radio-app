@@ -8,7 +8,6 @@ import android.graphics.BitmapFactory
 import android.graphics.drawable.Icon
 import android.media.session.MediaSession
 import com.p2lem8dev.internetRadio.R
-import com.p2lem8dev.internetRadio.app.service.NotificationFactory
 import com.p2lem8dev.internetRadio.app.service.player.PlayerService
 import com.p2lem8dev.internetRadio.database.radio.entities.RadioStation
 
@@ -24,8 +23,7 @@ class PlayerWidgetNotificationFactory(context: Context) : NotificationFactory(co
                     context,
                     0,
                     intent.apply {
-                        action =
-                            PlayerService.ACTION_KILL
+                        action = PlayerService.ACTION_KILL
                     },
                     PendingIntent.FLAG_CANCEL_CURRENT
                 )

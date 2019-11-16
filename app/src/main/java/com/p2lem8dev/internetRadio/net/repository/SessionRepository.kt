@@ -138,6 +138,10 @@ class SessionRepository(private val sessionDao: SessionDao) {
 
     public suspend fun isPlaying() = getCurrentSession().isPlaying
 
+    public suspend fun whichPlaying(): String? {
+        return getCurrentSession().lastRunningStationId
+    }
+
     companion object {
         private var mInstance: SessionRepository? = null
 

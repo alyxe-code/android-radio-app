@@ -5,7 +5,7 @@ import retrofit2.http.GET
 import retrofit2.http.Query
 
 // https://radio-tochka.com
-interface RadioTochkaAPI {
+interface RadioAPI {
 
     @GET("/radio/catalog/pages.php")
     suspend fun getCountRadios(): RadiosCountResponse

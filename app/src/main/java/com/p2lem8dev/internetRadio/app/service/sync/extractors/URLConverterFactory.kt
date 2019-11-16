@@ -2,7 +2,7 @@ package com.p2lem8dev.internetRadio.app.service.sync.extractors
 
 import android.util.Log
 import android.webkit.URLUtil
-import java.lang.Exception
+import com.p2lem8dev.internetRadio.net.utils.InternetConnectionTester
 import java.net.HttpURLConnection
 import java.net.URL
 
@@ -54,19 +54,33 @@ class URLConverterFactory private constructor(
     fun extract(): List<String>? {
         // connect to current URL
         val connection = getConnection(urlString) ?: return null
+
+        InternetConnectionTester.waitConnection()
+        var responseCode: Int
+
+        while (true) {
+            try {
+                InternetConnectionTester.waitConnection()
+                responseCode = connection.responseCode
+                break
+            } catch (e: Exception) {
+            }
+        }
+
         // check whether response code is error
         if (isError(urlString)) {
-            Log.d("SYNC_TEST", "$urlString returned ${connection.responseCode}")
+            Log.d("SYNC_TEST", "$urlString returned $responseCode")
             return null
         }
         // check whether it's possible to continue
         if (isRedirect(urlString) && !isFollowRedirection) {
-            Log.d("SYNC_TEST", "Cannot continue | STATUS_CODE: ${connection.responseCode}")
+            Log.d("SYNC_TEST", "Cannot continue | STATUS_CODE: $responseCode")
             return null
         }
         // sometimes Content-Type may be null then just skip this extraction
         if (connection.contentType != null) {
             // clear content type
+            InternetConnectionTester.waitConnection()
             val contentType = connection.contentType.split(";")[0]
             // check if the url is valid
             if (SUPPORTED_FINAL_AUDIO_FORMATS.find { it == contentType } != null) {
@@ -120,6 +134,7 @@ class URLConverterFactory private constructor(
             return null
         }
         return try {
+            InternetConnectionTester.waitConnection()
             var connection = URL(clearURLString).openConnection() as HttpURLConnection
             if (connection.responseCode.toString()[0] == '3' && isFollowRedirection) {
                 val url = followRedirection(URL(clearURLString)) ?: return null
@@ -136,11 +151,13 @@ class URLConverterFactory private constructor(
      */
     private fun followRedirection(url: URL?): URL? {
         if (url == null) return null
+        InternetConnectionTester.waitConnection()
         val nextRegexResult = URL_REGEX.find(url.readText())
         return if (nextRegexResult == null) null
         else {
             var redirectURL: URL? = URL(nextRegexResult.value)
             try {
+                InternetConnectionTester.waitConnection()
                 if (isRedirect(redirectURL.toString())) {
                     redirectURL = followRedirection(redirectURL)
                 }
@@ -184,8 +201,21 @@ class URLConverterFactory private constructor(
 
         val SUPPORTED_FINAL_AUDIO_FORMATS = listOf("audio/mpeg")
 
-        fun getResponseCodeOf(url: URL) =
-            (url.openConnection() as HttpURLConnection).responseCode
+        private fun getResponseCodeOf(url: URL): Int {
+            val connection = url.openConnection() as HttpURLConnection
+
+            var responseCode: Int
+            while (true) {
+                try {
+                    responseCode = connection.responseCode
+                    break
+                } catch (e: Exception) {
+                    InternetConnectionTester.waitConnection()
+                }
+            }
+
+            return responseCode
+        }
 
         fun isRunning(url: URL) = try {
             getResponseCodeOf(url) == HttpURLConnection.HTTP_OK
@@ -212,11 +242,12 @@ class URLConverterFactory private constructor(
         }
 
         private fun checkResponseCodeIsError(responseCode: Int): Boolean {
-            return responseCode != HttpURLConnection.HTTP_OK &&
-                    responseCode.toString()[0] != '3'
+            val codeFirstChar = responseCode.toString()[0]
+            return codeFirstChar != '2' && codeFirstChar != '3'
         }
 
         fun isError(urlString: String) = try {
+            InternetConnectionTester.waitConnection()
             checkResponseCodeIsError(
                 (URL(urlString).openConnection() as HttpURLConnection)
                     .responseCode

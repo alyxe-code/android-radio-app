@@ -22,7 +22,7 @@
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:onClick="@{() -> viewHolder.setSelected()}"
+        android:onClick="@{() -> viewHolder.focus()}"
         android:paddingStart="16dp"
         android:paddingTop="14dp"
         android:paddingEnd="16dp"
@@ -46,103 +46,34 @@
             android:layout_marginEnd="16dp"
             android:text="@{station.title}"
             android:textAppearance="@style/TextAppearance.MaterialComponents.Body1"
+            app:layout_constraintBottom_toBottomOf="@+id/imageView2"
             app:layout_constraintEnd_toStartOf="@+id/imageView3"
             app:layout_constraintStart_toEndOf="@+id/imageView2"
             app:layout_constraintTop_toTopOf="parent"
             tools:text="@tools:sample/full_names" />
 
-        <TextView
-            android:id="@+id/textView3"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
-            android:layout_marginTop="2dp"
-            android:layout_marginEnd="16dp"
-            android:textAppearance="@style/TextAppearance.MaterialComponents.Caption"
-            app:formatter_city="@{station.city}"
-            app:formatter_country="@{station.country}"
-            app:formatter_region="@{station.region}"
-            app:layout_constraintEnd_toStartOf="@+id/imageView3"
-            app:layout_constraintStart_toEndOf="@+id/imageView2"
-            app:layout_constraintTop_toBottomOf="@+id/textView2"
-            tools:text="@tools:sample/full_names" />
-
         <ImageButton
             android:id="@+id/imageView3"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_marginEnd="16dp"
             android:background="@{station.isFavorite ? @drawable/ic_favorite_white_24dp : @drawable/ic_favorite_border_black_24dp}"
-            tools:background="@drawable/ic_favorite_white_24dp"
             android:onClick="@{() -> viewHolder.setFavorite()}"
             app:layout_constraintBottom_toBottomOf="@+id/imageView2"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="@+id/imageView2" />
+            app:layout_constraintEnd_toStartOf="@+id/imageView4"
+            app:layout_constraintTop_toTopOf="@+id/imageView2"
+            tools:background="@drawable/ic_favorite_white_24dp" />
 
-        <TextView
-            android:id="@+id/textView5"
-            android:layout_width="0dp"
-            android:layout_height="54dp"
-            android:layout_marginTop="8dp"
-            android:text="@{station.stationId}"
-            app:layout_constraintEnd_toStartOf="@+id/guideline"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/imageView2"
-            app:visibility_true="@{showDetails}"
-            tools:text="@tools:sample/lorem/random" />
-
-        <androidx.constraintlayout.widget.Guideline
-            android:id="@+id/guideline"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            app:layout_constraintGuide_begin="302dp" />
-
-        <ImageView
+        <ImageButton
             android:id="@+id/imageView4"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            app:layout_constraintBottom_toBottomOf="@+id/textView6"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:background="@{ viewHolder.isPlaying() ? @drawable/exo_notification_stop : @drawable/ic_player_play_normal }"
+            android:onClick="@{() -> viewHolder.setSelected()}"
+            app:layout_constraintBottom_toBottomOf="@+id/imageView2"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="@+id/textView6"
-            app:srcCompat="@drawable/ic_speaker_white_24dp"
-            app:visibility_true="@{showDetails}" />
+            app:layout_constraintTop_toTopOf="@+id/imageView2"
+            tools:background="@drawable/ic_player_play_normal" />
 
-        <ImageView
-            android:id="@+id/imageView5"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            app:layout_constraintBottom_toBottomOf="@+id/textView7"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="@+id/textView7"
-            app:srcCompat="@drawable/ic_star_white_24dp"
-            app:visibility_true="@{showDetails}" />
-
-        <TextView
-            android:id="@+id/textView6"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginEnd="4dp"
-            android:textAlignment="textEnd"
-            app:layout_constraintEnd_toStartOf="@+id/imageView4"
-            app:layout_constraintStart_toStartOf="@+id/guideline"
-            app:layout_constraintTop_toTopOf="@+id/textView5"
-            app:num_value="@{station.listeners}"
-            app:visibility_true="@{showDetails}"
-            tools:text="13" />
-
-        <TextView
-            android:id="@+id/textView7"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:layout_marginEnd="4dp"
-            android:textAlignment="textEnd"
-            app:layout_constraintEnd_toStartOf="@+id/imageView4"
-            app:layout_constraintHorizontal_bias="0.0"
-            app:layout_constraintStart_toStartOf="@+id/guideline"
-            app:layout_constraintTop_toBottomOf="@+id/textView6"
-            app:num_value="@{station.voted}"
-            app:visibility_true="@{showDetails}"
-            tools:text="43" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 </layout>

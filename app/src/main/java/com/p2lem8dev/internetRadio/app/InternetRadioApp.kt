@@ -3,8 +3,7 @@ package com.p2lem8dev.internetRadio.app
 import android.app.Application
 import com.p2lem8dev.internetRadio.database.radio.RadioDatabase
 import com.p2lem8dev.internetRadio.database.session.SessionDatabase
-import com.p2lem8dev.internetRadio.net.api.RadioTochkaAPI
-import com.p2lem8dev.internetRadio.net.repository.RadioRepository
+import com.p2lem8dev.internetRadio.net.api.RadioAPI
 import com.p2lem8dev.internetRadio.net.repository.RadioStationRepository
 import com.p2lem8dev.internetRadio.net.repository.SessionRepository
 import retrofit2.Retrofit
@@ -12,11 +11,11 @@ import retrofit2.converter.gson.GsonConverterFactory
 
 class InternetRadioApp : Application() {
 
-    private val mRadioTochkaAPI: RadioTochkaAPI = Retrofit.Builder()
+    private val mRadioAPI: RadioAPI = Retrofit.Builder()
         .addConverterFactory(GsonConverterFactory.create())
         .baseUrl(RADIO_TOCHKA_API_HOST)
         .build()
-        .create(RadioTochkaAPI::class.java)
+        .create(RadioAPI::class.java)
 
     override fun onCreate() {
         super.onCreate()
@@ -27,14 +26,16 @@ class InternetRadioApp : Application() {
         RadioStationRepository.create(
             applicationContext,
             radioDb.getRadioStationsDao(),
-            mRadioTochkaAPI
+            mRadioAPI
         )
-        RadioRepository.create(applicationContext, radioDb.getRadioStationsDao(), mRadioTochkaAPI)
         SessionRepository.create(sessionDb.getSessionDao())
+    }
+
+    fun getImagesSaveDirectory(): String {
+        return "${filesDir.absolutePath}/images/"
     }
 
     companion object {
         const val RADIO_TOCHKA_API_HOST = "https://radio-tochka.com"
-
     }
 }

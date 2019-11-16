@@ -1,6 +1,7 @@
 package com.p2lem8dev.internetRadio.database.radio.factory
 
 import com.p2lem8dev.internetRadio.database.radio.entities.RadioStation
+import com.p2lem8dev.internetRadio.net.api.BaseRadioInfo
 import com.p2lem8dev.internetRadio.net.api.FullRadioInfo
 
 class RadioStationFactory {
@@ -26,6 +27,19 @@ class RadioStationFactory {
                 voted = radio.voted.toInt(),
                 isFavorite = isFavorite,
                 imageUrl = imageUrl
+            )
+        }
+
+        fun fromBaseInfo(
+            radio: BaseRadioInfo,
+            isFavorite: Boolean = false,
+            imageUrl: String? = null
+        ): RadioStation {
+            return RadioStation(
+                stationId = radio.id,
+                title = radio.title,
+                links = radio.links.map { it.url } as ArrayList<String>,
+                genres = arrayListOf()
             )
         }
     }

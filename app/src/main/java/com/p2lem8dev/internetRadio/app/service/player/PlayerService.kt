@@ -17,10 +17,10 @@ import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
 import com.google.android.exoplayer2.util.Util
 import com.p2lem8dev.internetRadio.app.MainActivity
-import com.p2lem8dev.internetRadio.app.service.NotificationFactory
+import com.p2lem8dev.internetRadio.app.utils.notification.NotificationFactory
 import com.p2lem8dev.internetRadio.app.utils.Playlist
 import com.p2lem8dev.internetRadio.database.radio.entities.RadioStation
-import com.p2lem8dev.internetRadio.net.repository.RadioRepository
+import com.p2lem8dev.internetRadio.net.repository.RadioStationRepository
 import com.p2lem8dev.internetRadio.net.repository.SessionRepository
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -136,52 +136,53 @@ class PlayerService : Service() {
         GlobalScope.launch {
             if (commandsRequireStation.contains(intent.action)) {
                 // validate stationId
-                var stationId = intent.getStringExtra(EXTRA_STATION_ID)
-                require(!(stationId == null && this@PlayerService.stationId == null)) {
-                    IllegalArgumentException(
-                        "StationId cannot be null"
-                    )
-                }
-                if (this@PlayerService.stationId != null && stationId == null) {
-                    stationId = this@PlayerService.stationId
-                }
+                var stationId =
+                    intent.getStringExtra(EXTRA_STATION_ID) ?: this@PlayerService.stationId
+                require(stationId != null) { IllegalStateException("Station Id is required") }
 
                 // update stationId
                 this@PlayerService.stationId = stationId
-                stationData = RadioRepository.get().findByStationId(this@PlayerService.stationId!!)
-                checkNotNull(stationData) { IllegalArgumentException("Station#${this@PlayerService.stationId} not found in database") }
+                stationData = RadioStationRepository.get()
+                    .findStation(this@PlayerService.stationId!!)
+
+                checkNotNull(stationData) {
+                    // TODO: Handle it
+                    IllegalArgumentException(
+                        "Station#${this@PlayerService.stationId} not found in database"
+                    )
+
+                }
 
                 // update playlist selector
                 val playlistSelector = intent.getBooleanExtra(EXTRA_PLAYLIST_SELECTOR, true)
-                if (playlistSelector != this@PlayerService.playlistSelector || playlist.isEmpty()) {
-                    this@PlayerService.playlistSelector = playlistSelector
-                    playlist = Playlist()
-                    playlist.loadAsync(playlistSelector)
-                }
-
-                // ensure everything is fine
-                check(!playlist.isEmpty()) { IllegalStateException("Playlist is empty") }
-
-                // update playlist data
-                playlist.setCurrentByStationId(this@PlayerService.stationId!!)
+                this@PlayerService.playlistSelector = playlistSelector
             }
 
-            // handle commands
-            when (intent.action) {
-                ACTION_START -> handleActionStart()
-                ACTION_START_WAIT -> handleActionStartWait()
-                ACTION_PLAY -> handleActionPlay()
-                ACTION_PLAY_NEXT -> handleActionPlayNext()
-                ACTION_PLAY_PREVIOUS -> handleActionPlayPrevious()
-                ACTION_STOP -> handleActionStop()
-                ACTION_CHANGE_FAVORITE -> handleActionChangeFavorite()
-                ACTION_KILL -> handleActionKill()
+            // rebuild playlist each time because data could be changed
+            // TODO: Add checker for this
+            playlist = Playlist()
+            playlist.loadAsync(playlistSelector) {
+                // update playlist data
+                playlist.setCurrentByStationId(this@PlayerService.stationId!!)
+
+                // handle commands
+                when (intent.action) {
+                    ACTION_START -> handleActionStart()
+                    ACTION_START_WAIT -> handleActionStartWait()
+                    ACTION_PLAY -> handleActionPlay()
+                    ACTION_PLAY_NEXT -> handleActionPlayNext()
+                    ACTION_PLAY_PREVIOUS -> handleActionPlayPrevious()
+                    ACTION_STOP -> handleActionStop()
+                    ACTION_CHANGE_FAVORITE -> handleActionChangeFavorite()
+                    ACTION_KILL -> handleActionKill()
+                }
             }
         }
 
         return if (commandsRequireSticky.contains(intent.action)) START_STICKY
         else START_NOT_STICKY
     }
+
 
     private fun handleActionStart() = GlobalScope.launch {
         createOrUpdateNotification()
@@ -201,19 +202,13 @@ class PlayerService : Service() {
         createOrUpdateNotification()
     }
 
-    private fun handleActionPlayNext() = GlobalScope.launch {
-        play()
-        createOrUpdateNotification()
-    }
+    private fun handleActionPlayNext() = handleActionPlay()
 
-    private fun handleActionPlayPrevious() = GlobalScope.launch {
-        play()
-        createOrUpdateNotification()
-    }
+    private fun handleActionPlayPrevious() = handleActionPlay()
 
     private fun handleActionStop() {
         stop()
-        createOrUpdateNotification()
+        createOrUpdateNotification(true)
     }
 
     private fun handleActionKill() {
@@ -226,17 +221,17 @@ class PlayerService : Service() {
         stationData?.let { station ->
             station.isFavorite = !station.isFavorite
             stationData = station
-            RadioRepository.get().setFavorite(station.stationId, station.isFavorite)
+            RadioStationRepository.get().setFavorite(station.stationId, station.isFavorite)
             createOrUpdateNotification()
         }
     }
 
+    private fun createOrUpdateNotification(allowCloseNotification: Boolean = false) {
+        requireNotNull(!playlist.isEmpty()) { "Playlist is empty!!!!" }
+        requireNotNull(stationId) { "Station Id is required but null" }
+        requireNotNull(stationData) { "Station data required but null" }
 
-    private fun createOrUpdateNotification() {
         createOrUpdateNotificationChannel()
-
-        // Ensure playlist not empty
-        check(!playlist.isEmpty()) { IllegalStateException("Playlist is empty") }
 
         // Create notification builder
         val notification = NotificationFactory(applicationContext)
@@ -244,22 +239,30 @@ class PlayerService : Service() {
 
         // Close
         notification.addActionClose()
+
         // Play previous
         notification.addActionPlayPrevious(playlist.previous.stationId, playlistSelector)
+
         // Play or Stop
         if (isPlaying) notification.addActionStop(playlist.current.stationId, playlistSelector)
         else notification.addActionPlay(playlist.current.stationId, playlistSelector)
+
         // Play next
         notification.addActionPlayNext(playlist.next.stationId, playlistSelector)
+
         // Change favorite
         notification.addActionChangeFavorite(
             stationId!!,
             playlistSelector,
             stationData!!.isFavorite
         )
+        notification.bindToActivity(MainActivity::class.java)
 
-        // show notification
+        // Show notification
         startForeground(NotificationFactory.NOTIFICATION_PLAYER_ID, notification.build())
+        if (allowCloseNotification) {
+            stopForeground(false)
+        }
     }
 
     private fun createOrUpdateNotificationChannel() {
@@ -281,6 +284,7 @@ class PlayerService : Service() {
             .setExtractorsFactory(DefaultExtractorsFactory())
             .createMediaSource(Uri.parse(url))
 
+        // leave issue when several players are playing
         mExoPlayer?.let {
             it.stop(true)
             it.release()
@@ -329,14 +333,19 @@ class PlayerService : Service() {
             prepareExoPlayer(it.links[0])
             SessionRepository.get().setRadioRunning(stationId!!)
         }
+        setMediaSessionPlaying()
     }
 
     private fun stop() {
         isPlaying = false
+        if (mExoPlayer == null) {
+            Log.wtf("PLAYER", "ExoPlayer is null")
+        }
         mExoPlayer?.stop(true)
         GlobalScope.launch {
             SessionRepository.get().setRadioStopped(stationId!!)
         }
+        setMediaSessionStopped()
     }
 
     companion object {
@@ -346,12 +355,12 @@ class PlayerService : Service() {
         const val ACTION_PLAY = "action::play"
         const val ACTION_PLAY_NEXT = "action::next"
         const val ACTION_PLAY_PREVIOUS = "action::previous"
-        const val ACTION_STOP = "action:stop"
+        const val ACTION_STOP = "action::stop"
         const val ACTION_KILL = "action::kill"
         const val ACTION_CHANGE_FAVORITE = "action::change_favorite"
 
         // station id
-        const val EXTRA_STATION_ID = "extra:station_id"
+        const val EXTRA_STATION_ID = "extra::station_id"
         // playlist selector
         const val EXTRA_PLAYLIST_SELECTOR = "extra::playlist_selector"
         const val EXTRA_PLAYLIST_SELECTOR_ANY = Playlist.PLAYLIST_SELECTOR_ANY

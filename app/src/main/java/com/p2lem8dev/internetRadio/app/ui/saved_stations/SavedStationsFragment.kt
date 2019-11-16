@@ -19,6 +19,7 @@ import com.p2lem8dev.internetRadio.app.utils.Playlist
 import com.p2lem8dev.internetRadio.database.radio.entities.RadioStation
 import com.p2lem8dev.internetRadio.databinding.LayoutStationsBinding
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 
 class SavedStationsFragment : StationsFragment(), ListActionHandler {
 
@@ -34,8 +35,6 @@ class SavedStationsFragment : StationsFragment(), ListActionHandler {
         layoutStationsBinding = DataBindingUtil.inflate(
             inflater, R.layout.layout_stations, container, false
         )
-        layoutStationsBinding.stationsAmount = 0
-        layoutStationsBinding.pageName = "Saved Stations"
         return layoutStationsBinding.root
     }
 
@@ -49,7 +48,6 @@ class SavedStationsFragment : StationsFragment(), ListActionHandler {
 
         stationsViewModel.favoriteStations.observe(activity!!, Observer {
             stationsListAdapter.postData(it)
-            layoutStationsBinding.stationsAmount = it.size
             layoutStationsBinding.notifyChange()
         })
     }
@@ -66,6 +64,9 @@ class SavedStationsFragment : StationsFragment(), ListActionHandler {
     }
 
     override fun onChangeFavorite(station: RadioStation) {
-        stationsViewModel.setFavoriteInvert(station)
+        GlobalScope.launch {
+            stationsViewModel.setFavoriteInvert(station)
+        }
     }
+
 }

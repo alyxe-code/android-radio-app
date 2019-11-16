@@ -17,7 +17,7 @@ import com.p2lem8dev.internetRadio.app.service.player.PlayerService
 import com.p2lem8dev.internetRadio.app.ui.stations.StationsViewModel
 import com.p2lem8dev.internetRadio.app.utils.Playlist
 import com.p2lem8dev.internetRadio.databinding.FragmentPlayerBinding
-import com.p2lem8dev.internetRadio.net.repository.RadioRepository
+import com.p2lem8dev.internetRadio.net.repository.RadioStationRepository
 import com.p2lem8dev.internetRadio.net.repository.SessionRepository
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
@@ -32,6 +32,14 @@ class PlayerFragment : Fragment() {
 
     private val mActivityCallback = object : PlayerViewModel.ActivityCallback {
 
+        private suspend fun getServiceActionNextPrevious(): String {
+            return when {
+                SessionRepository.get().isPlaying() -> PlayerService.ACTION_PLAY
+                PlayerService.isRunning() -> PlayerService.ACTION_START_WAIT
+                else -> PlayerService.ACTION_START
+            }
+        }
+
         override fun onClickNext(isPlaying: Boolean) {
             val playlist = Playlist.createFrom(
                 stationsViewModel.getStations().value!!,
@@ -41,11 +49,7 @@ class PlayerFragment : Fragment() {
             GlobalScope.launch {
                 startPlayerService(
                     playlist.next.stationId,
-                    when {
-                        SessionRepository.get().isPlaying() -> PlayerService.ACTION_PLAY
-                        PlayerService.isRunning() -> PlayerService.ACTION_START_WAIT
-                        else -> PlayerService.ACTION_START
-                    }
+                    getServiceActionNextPrevious()
                 )
             }
         }
@@ -59,11 +63,7 @@ class PlayerFragment : Fragment() {
             GlobalScope.launch {
                 startPlayerService(
                     playlist.previous.stationId,
-                    when {
-                        SessionRepository.get().isPlaying() -> PlayerService.ACTION_PLAY
-                        PlayerService.isRunning() -> PlayerService.ACTION_START_WAIT
-                        else -> PlayerService.ACTION_START
-                    }
+                    getServiceActionNextPrevious()
                 )
             }
         }
@@ -110,8 +110,8 @@ class PlayerFragment : Fragment() {
         if (stationsViewModel.selectedStation.value == null) {
             GlobalScope.launch {
                 val id = SessionRepository.get().getCurrentSession().lastRunningStationId
-                SessionRepository.get().getCurrentSession().lastRunningStationId?.let {
-                    RadioRepository.get().findByStationId(it)?.let { station ->
+                SessionRepository.get().getCurrentSession().lastRunningStationId?.let { it ->
+                    RadioStationRepository.get().findStation(it)?.let { station ->
                         stationsViewModel.setSelected(
                             station,
                             updateSession = false,
@@ -122,9 +122,9 @@ class PlayerFragment : Fragment() {
                 }
                 if (stationsViewModel.getStations().value == null) {
                     (if (stationsViewModel.playlistSelectorAny) {
-                        RadioRepository.get().getAllStations().first()
+                        RadioStationRepository.get().getAllStations().first()
                     } else {
-                        RadioRepository.get().getAllFavoriteStations().first()
+                        RadioStationRepository.get().getAllFavoriteStations().first()
                     }).let {
                         stationsViewModel.setSelected(it, updateSession = true, postValue = true)
                     }
@@ -138,15 +138,6 @@ class PlayerFragment : Fragment() {
 
         binding.viewModel = playerViewModel
         binding.executePendingBindings()
-
-        jobUpdatePlaying = GlobalScope.launch {
-            while (true) {
-                Thread.sleep(100)
-                playerViewModel.isPlaying.set(
-                    SessionRepository.get().isPlaying()
-                )
-            }
-        }
 
         (activity!!.getSystemService(Context.AUDIO_SERVICE) as AudioManager).let {
             maxSoundVolume = it.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
@@ -164,6 +155,18 @@ class PlayerFragment : Fragment() {
             override fun onStopTrackingTouch(seekBar: SeekBar?) {
             }
         })
+    }
+
+    override fun onResume() {
+        super.onResume()
+        jobUpdatePlaying = GlobalScope.launch {
+            while (true) {
+                playerViewModel.isPlaying.set(
+                    SessionRepository.get().isPlaying()
+                )
+                Thread.sleep(100)
+            }
+        }
     }
 
     override fun onPause() {

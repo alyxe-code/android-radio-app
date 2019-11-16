@@ -15,7 +15,7 @@ class RadioStation (
     var listeners: Int = 0,
     var views: Int = 0,
     var playerStream: String? = null,
-    var language: String,
+    var language: String? = null,
     var genres: ArrayList<String>,
     var voted: Int = 0,
     var isFavorite: Boolean = false,

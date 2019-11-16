@@ -2,6 +2,7 @@ package com.p2lem8dev.internetRadio.app.service.sync.extractors
 
 import android.annotation.SuppressLint
 import android.webkit.URLUtil
+import com.p2lem8dev.internetRadio.net.utils.InternetConnectionTester
 import java.lang.Exception
 import java.net.HttpURLConnection
 import java.net.URL
@@ -17,9 +18,10 @@ class PLSConverterFactory : ConverterFactory {
         onlyRunning: Boolean,
         getConnection: (String?) -> HttpURLConnection?
     ): List<String>? {
+        InternetConnectionTester.waitConnection()
 
         val url = URL(urlString)
-        val text = url.readText()
+        val text = readURLContent(url) ?: return null
 
         val lines = text.split("\n").map { it.trim() }
         var urls = lines
@@ -29,14 +31,7 @@ class PLSConverterFactory : ConverterFactory {
             .filter { URLUtil.isValidUrl(it) && it.substring(0, 4) == "http" }
 
         if (onlyRunning) {
-            urls = urls.filter {
-                try {
-                    (URL(it).openConnection() as HttpURLConnection)
-                        .responseCode == HttpURLConnection.HTTP_OK
-                } catch (e: Exception) {
-                    false
-                }
-            }
+            urls = urls.filter { URLConverterFactory.isRunning(it) }
         }
 
         return if (urls.isEmpty()) null

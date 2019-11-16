@@ -1,31 +1,27 @@
 package com.p2lem8dev.internetRadio.sync
 
+import android.app.Application
 import android.content.Context
+import android.content.Intent
 import android.util.Log
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
+import com.p2lem8dev.internetRadio.app.service.sync.SyncService
 import com.p2lem8dev.internetRadio.database.radio.entities.RadioStation
 import com.p2lem8dev.internetRadio.net.repository.RadioStationRepository
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import java.lang.Exception
 
-class SyncViewModel : ViewModel() {
+class SyncViewModel(application: Application) : AndroidViewModel(application) {
 
-    fun sync(
-        context: Context,
-        apiHostname: String,
-        imagesSaveDir: String
-    ) {
+    fun sync() {
 
-        GlobalScope.launch {
-            try {
-                RadioStationRepository.get().sync(imagesSaveDir) {
-                    Log.d("SYNC", "Saving station#${it.id} ${it.title}")
-                }
-            } catch (e: Exception) {
-                Log.wtf("SYNC", e.stackTrace.joinToString("\n"))
-            }
-
+        val syncService = SyncService.getInstance()
+        if (syncService != null) {
+            Log.d("SYNC_BG_FG", "Service is working")
+        } else {
+            SyncService.start(getApplication<Application>().applicationContext)
         }
 
     }

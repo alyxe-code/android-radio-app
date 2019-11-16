@@ -1,4 +1,4 @@
-package com.p2lem8dev.internetRadio.app.service
+package com.p2lem8dev.internetRadio.app.utils.notification
 
 import android.app.*
 import android.content.Context
@@ -6,8 +6,8 @@ import android.content.Intent
 import android.graphics.drawable.Icon
 import android.media.session.MediaSession
 import com.p2lem8dev.internetRadio.R
-import com.p2lem8dev.internetRadio.app.utils.notification.PlayerWidgetNotificationFactory
 import com.p2lem8dev.internetRadio.database.radio.entities.RadioStation
+import com.p2lem8dev.internetRadio.sync.SyncActivity
 
 open class NotificationFactory(protected val context: Context) {
 
@@ -17,6 +17,10 @@ open class NotificationFactory(protected val context: Context) {
     protected val applicationIcon: Icon =
         Icon.createWithResource(context, R.drawable.ic_player_stop_normal)
 
+    fun addAction(action: Notification.Action.Builder): NotificationFactory {
+        notificationBuilder?.addAction(action.build())
+        return this
+    }
 
     fun createTextStyle(title: String, text: String): NotificationFactory {
         notificationBuilder = Notification.Builder(context, NOTIFICATION_DEFAULT_CHANNEL_ID)
@@ -30,23 +34,40 @@ open class NotificationFactory(protected val context: Context) {
     fun createPlayerWidgetNotification(station: RadioStation, sessionToken: MediaSession.Token) =
         PlayerWidgetNotificationFactory.createNotification(context, station, sessionToken)
 
+    fun bindToActivity(activity: Class<out Activity>): NotificationFactory {
+        notificationBuilder?.setContentIntent(
+            PendingIntent.getActivity(
+                context,
+                0,
+                Intent(context, activity),
+                PendingIntent.FLAG_UPDATE_CURRENT
+            )
+        )
+        return this
+    }
+
     fun build(): Notification? {
         return notificationBuilder?.build()
     }
 
 
     enum class NotificationChannelType {
-        Default, PlayerWidget
+        Default, PlayerWidget, Synchronization
     }
 
     companion object {
-        private const val NOTIFICATION_DEFAULT_CHANNEL_ID = "notification::default"
-        private const val NOTIFICATION_DEFAULT_CHANNEL_NAME = "Default"
+
+        const val NOTIFICATION_DEFAULT_CHANNEL_ID = "notification::default"
+        const val NOTIFICATION_DEFAULT_CHANNEL_NAME = "Default"
         const val NOTIFICATION_DEFAULT_ID = 1
 
-        private const val NOTIFICATION_PLAYER_CHANNEL_ID = "notification::player"
-        private const val NOTIFICATION_PLAYER_CHANNEL_NAME = "Player widget"
+        const val NOTIFICATION_PLAYER_CHANNEL_ID = "notification::player"
+        const val NOTIFICATION_PLAYER_CHANNEL_NAME = "Player widget"
         const val NOTIFICATION_PLAYER_ID = 2
+
+        const val NOTIFICATION_SYNC_CHANNEL_ID = "notification::sync"
+        const val NOTIFICATION_SYNC_CHANNEL_NAME = "Synchronization"
+        const val NOTIFICATION_SYNC_ID = 3
 
         private fun createNotificationChannel(type: NotificationChannelType): NotificationChannel {
             val id: String
@@ -61,6 +82,11 @@ open class NotificationFactory(protected val context: Context) {
                 NotificationChannelType.PlayerWidget -> {
                     id = NOTIFICATION_PLAYER_CHANNEL_ID
                     name = NOTIFICATION_PLAYER_CHANNEL_NAME
+                    importance = NotificationManager.IMPORTANCE_LOW
+                }
+                NotificationChannelType.Synchronization -> {
+                    id = NOTIFICATION_SYNC_CHANNEL_ID
+                    name = NOTIFICATION_SYNC_CHANNEL_NAME
                     importance = NotificationManager.IMPORTANCE_LOW
                 }
             }
