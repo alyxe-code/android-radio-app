@@ -14,6 +14,7 @@ import com.p2lem8dev.internetRadio.app.MainActivity
 import com.p2lem8dev.internetRadio.app.utils.notification.NotificationFactory
 import com.p2lem8dev.internetRadio.net.repository.RadioStationRepository
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 class SyncService : Service() {
@@ -54,6 +55,8 @@ class SyncService : Service() {
         instance = this
     }
 
+    private var syncStationsAmount = 0
+
     private fun handleActionStartLoadBase() {
         Log.d("SYNC_SERVICE", "Loading base...")
         createOrUpdateNotification()
@@ -64,6 +67,8 @@ class SyncService : Service() {
             ) {
                 createOrUpdateNotification(it.title)
                 onNextLoaded?.invoke()
+                syncStationsAmount++
+                checkStopNotification()
             }
         }
         instance = this
@@ -101,12 +106,39 @@ class SyncService : Service() {
         startForeground(NotificationFactory.NOTIFICATION_SYNC_ID, notification)
     }
 
+    private var jobCheckStopNotification: Job? = null
+
+    private fun checkStopNotification() {
+        // stop job
+        jobCheckStopNotification?.cancel()
+        // start again
+        jobCheckStopNotification = GlobalScope.launch {
+            Thread.sleep(TIME_STOP_NOTIFICATION_TIMEOUT)
+
+            // stop after timeout | it won't be restarted
+            // create notification to show that process has been finished
+            val notification = NotificationFactory(applicationContext).createTextStyle(
+                "Synchronization",
+                "Synchronization has been finished. Synced $syncStationsAmount stations"
+            ).build()
+
+            stopForeground(true)
+            startForeground(NotificationFactory.NOTIFICATION_DEFAULT_ID, notification)
+            stopForeground(false)
+
+            // cancel job
+            jobCheckStopNotification?.cancel()
+        }
+    }
+
     companion object {
         private const val ACTION_START_LOAD_ALL = "action::start::load_all"
         private const val ACTION_START_LOAD_BASE = "action::start::load_base"
         private const val ACTION_STOP = "action:stop"
 
         private const val EXTRA_IMAGES_DOWNLOAD_DIR = "extra::images_download_dir"
+
+        private const val TIME_STOP_NOTIFICATION_TIMEOUT = 10000L // 10 sec
 
         private var instance: SyncService? = null
         fun getInstance(): SyncService? {

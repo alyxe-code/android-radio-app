@@ -22,7 +22,6 @@ import com.google.android.exoplayer2.util.Util
 import com.p2lem8dev.internetRadio.app.MainActivity
 import com.p2lem8dev.internetRadio.app.utils.notification.NotificationFactory
 import com.p2lem8dev.internetRadio.app.utils.Playlist
-import com.p2lem8dev.internetRadio.database.radio.RadioDatabase_Impl
 import com.p2lem8dev.internetRadio.database.radio.entities.RadioStation
 import com.p2lem8dev.internetRadio.net.repository.RadioStationRepository
 import com.p2lem8dev.internetRadio.net.repository.SessionRepository
@@ -419,7 +418,7 @@ class PlayerService : Service() {
         const val EXTRA_STATION_ID = "extra::station_id"
         // playlist selector
         const val EXTRA_PLAYLIST_SELECTOR = "extra::playlist_selector"
-        const val EXTRA_PLAYLIST_SELECTOR_ANY = Playlist.PLAYLIST_SELECTOR_ANY
+        const val EXTRA_PLAYLIST_SELECTOR_ANY = Playlist.PLAYLIST_SELECTOR_ALL
         const val EXTRA_PLAYLIST_SELECTOR_FAVORITE = Playlist.PLAYLIST_SELECTOR_FAVORITE
 
         const val NOTIFICATION_CHANNEL_DEFAULT = "notification::default"

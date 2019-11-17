@@ -3,11 +3,13 @@ package com.p2lem8dev.internetRadio.app.utils
 import android.util.Log
 import com.p2lem8dev.internetRadio.database.radio.entities.RadioStation
 import com.p2lem8dev.internetRadio.net.repository.RadioStationRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import java.lang.IllegalStateException
+import kotlinx.coroutines.withContext
 
 class Playlist {
+
     private var mQueue: ArrayList<RadioStation> = arrayListOf()
     private var mCurrentIndex = 0
 
@@ -18,8 +20,13 @@ class Playlist {
     fun setCurrentByStationId(stationId: String): RadioStation? {
         if (isEmpty()) {
             GlobalScope.launch {
-                mQueue = RadioStationRepository.get().getAllStations() as ArrayList<RadioStation>
-                setCurrentByStationId(stationId)
+                withContext(context = Dispatchers.IO) {
+                    mQueue = RadioStationRepository.get()
+                        .getAllStations() as ArrayList<RadioStation>
+                }
+                withContext(context = Dispatchers.Main) {
+                    setCurrentByStationId(stationId)
+                }
             }
             return null
         }
@@ -48,24 +55,18 @@ class Playlist {
     fun isEmpty() = size == 0
 
     suspend fun loadAsync(
-        playlistSelectorAny: Boolean,
+        playlistSelectorAll: Boolean,
         currentStationId: String? = null,
         then: (() -> Unit)? = null
     ) {
         ready = false
-
         mQueue = arrayListOf()
-        if (playlistSelectorAny) {
-            RadioStationRepository.get().getAllStations().let {
-                mQueue = it as ArrayList<RadioStation>
-            }
-        } else {
-            RadioStationRepository.get().getAllFavoriteStations().let {
-                mQueue = it as ArrayList<RadioStation>
-            }
-        }
 
-        Log.d("PLAYER_PLAYLIST", "Queue Size = $size")
+        mQueue = if (playlistSelectorAll) {
+            RadioStationRepository.get().getAllStations()
+        } else {
+            RadioStationRepository.get().getAllFavoriteStations()
+        } as ArrayList<RadioStation>
 
         currentStationId?.let { stationId ->
             mCurrentIndex = mQueue.indexOfFirst { it.stationId == stationId }
@@ -75,16 +76,14 @@ class Playlist {
         then?.invoke()
     }
 
-    fun remove(station: RadioStation): RadioStation {
-        return removeByStationId(station.stationId)
-    }
-
     fun removeByStationId(stationId: String): RadioStation {
         var idx = mQueue.indexOfFirst { it.stationId == stationId }
         mQueue.removeAt(idx)
+
         if (idx >= mQueue.size) {
             idx = 0
         }
+
         if (idx < 0) {
             idx = 0
         }
@@ -94,21 +93,19 @@ class Playlist {
     }
 
     companion object {
+
+        const val PLAYLIST_SELECTOR_ALL = true
+        const val PLAYLIST_SELECTOR_FAVORITE = false
+
         fun createFrom(stations: List<RadioStation>, current: RadioStation? = null) =
+            createFrom(stations, current?.stationId)
+
+        fun createFrom(stations: List<RadioStation>, currentStationId: String?) =
             Playlist().apply {
                 mQueue = stations as ArrayList<RadioStation>
-                mCurrentIndex = if (current != null) {
-                    stations.indexOfFirst { it.stationId == current.stationId }
+                mCurrentIndex = if (currentStationId != null) {
+                    stations.indexOfFirst { it.stationId == currentStationId }
                 } else 0
             }
-
-        fun createFrom(stations: List<RadioStation>, currentStationId: String) =
-            Playlist().apply {
-                mQueue = stations as ArrayList<RadioStation>
-                mCurrentIndex = stations.indexOfFirst { it.stationId == currentStationId }
-            }
-
-        const val PLAYLIST_SELECTOR_ANY = true
-        const val PLAYLIST_SELECTOR_FAVORITE = false
     }
 }

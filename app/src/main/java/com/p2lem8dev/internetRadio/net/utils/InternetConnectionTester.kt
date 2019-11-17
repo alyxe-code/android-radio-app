@@ -1,6 +1,7 @@
 package com.p2lem8dev.internetRadio.net.utils
 
 import android.util.Log
+import com.p2lem8dev.internetRadio.app.InternetRadioApp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
@@ -27,7 +28,7 @@ class InternetConnectionTester {
     fun start() {
         while (true) {
             try {
-                hostname = InetAddress.getByName(TEST_HOSTNAME).hostAddress
+                hostname = InetAddress.getByName(InternetRadioApp.PING_HOST).hostAddress
                 break
             } catch (e: Exception) {
                 isConnectedAndActive = false
@@ -55,7 +56,8 @@ class InternetConnectionTester {
         true
     } catch (e: Exception) {
         Log.w(
-            "SYNC_NET", "ERROR Connection | ${e.message}" +
+            "SYNC_NET",
+            "ERROR Connection | ${e.message}" +
                     e.stackTrace.joinToString("\n")
         )
         false
@@ -63,7 +65,6 @@ class InternetConnectionTester {
 
 
     companion object {
-        const val TEST_HOSTNAME = "www.radio-tochka.com"
         const val TEST_PORT = 80
         const val TEST_TIME_INTERVAL = 1000L
 

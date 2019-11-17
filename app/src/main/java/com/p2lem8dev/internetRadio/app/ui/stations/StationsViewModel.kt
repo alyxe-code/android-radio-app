@@ -1,13 +1,12 @@
 package com.p2lem8dev.internetRadio.app.ui.stations
 
 import android.content.Context
-import android.content.Intent
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.p2lem8dev.internetRadio.app.service.sync.SyncService
+import com.p2lem8dev.internetRadio.app.utils.Playlist
 import com.p2lem8dev.internetRadio.database.radio.entities.RadioStation
-import com.p2lem8dev.internetRadio.net.api.BaseRadioInfo
 import com.p2lem8dev.internetRadio.net.repository.RadioStationRepository
 import com.p2lem8dev.internetRadio.net.repository.SessionRepository
 import kotlinx.coroutines.*
@@ -15,26 +14,52 @@ import kotlinx.coroutines.*
 class StationsViewModel : ViewModel() {
 
     var selectedStation = MutableLiveData<RadioStation>()
+
     var allStations = RadioStationRepository.get().getAllStationsLiveData()
     var favoriteStations = RadioStationRepository.get().getAllFavoriteStationsLiveData()
 
-    var playingStationId: String? = null
+    private var _playlistSelector: Boolean = true
 
-    private var _playlistSelectorAny: Boolean = true
-
-    val playlistSelectorAny: Boolean
-        get() = _playlistSelectorAny
+    var playlistSelector: Boolean
+        get() = _playlistSelector
+        private set(value) {
+            _playlistSelector = value
+        }
 
     var isLoading = false
 
+    suspend fun getSelectedStation(): LiveData<RadioStation> {
+        if (selectedStation.value != null) {
+            return selectedStation
+        } else {
+            SessionRepository.get().getCurrentSession().lastRunningStationId?.let { id ->
+                RadioStationRepository.get().findStation(id)?.let { station ->
+                    selectedStation.postValue(station)
+                }
+                return selectedStation
+            }
+
+            val station = getFirstStation()
+            SessionRepository.get().let { sessionRepository ->
+                sessionRepository.updateLastRunningStation(station.stationId)
+                selectedStation.postValue(station)
+            }
+            return selectedStation
+        }
+    }
+
     fun usePlaylist(onlyFavorite: Boolean): StationsViewModel {
-        _playlistSelectorAny = onlyFavorite
+        playlistSelector = if (onlyFavorite) {
+            Playlist.PLAYLIST_SELECTOR_FAVORITE
+        } else {
+            Playlist.PLAYLIST_SELECTOR_ALL
+        }
         return this
     }
 
-    fun getStations(): LiveData<List<RadioStation>> {
-        return if (_playlistSelectorAny) allStations
-        else favoriteStations
+    fun getStations() = when (playlistSelector) {
+        Playlist.PLAYLIST_SELECTOR_FAVORITE -> favoriteStations
+        else -> allStations
     }
 
     suspend fun setFavoriteInvert(station: RadioStation) {
@@ -64,16 +89,18 @@ class StationsViewModel : ViewModel() {
         return getStations().value?.find { it.stationId == stationId }
     }
 
-    suspend fun loadStations(context: Context, imagesDownloadDirectory: String, onLoad: (() -> Unit)? = null) {
-        withContext(context = Dispatchers.Main) {
-            SyncService.start(context, imagesDownloadDirectory) {
-                onLoad?.invoke()
-            }
-        }
+    fun loadStations(
+        context: Context,
+        imagesDownloadDirectory: String,
+        onLoad: (() -> Unit)? = null
+    ) = SyncService.start(context, imagesDownloadDirectory) {
+        onLoad?.invoke()
     }
 
     suspend fun getAllStations() = RadioStationRepository.get().getAllStations()
 
     suspend fun getAllFavoriteStations() = RadioStationRepository.get().getAllFavoriteStations()
+
+    suspend fun getFirstStation() = RadioStationRepository.get().getAllStations().first()
 
 }

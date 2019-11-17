@@ -9,33 +9,6 @@ import java.util.*
 class SessionRepository(private val sessionDao: SessionDao) {
 
     /**
-     * Start new session only ignoring existence and validity
-     */
-    private suspend fun startNewSessionForce(): Session {
-        var session: Session? = null
-        withContext(context = Dispatchers.IO) {
-            session = sessionDao.getCurrentSession()
-            if (session != null) {
-                session!!.isValid = false
-                sessionDao.update(session!!)
-            }
-            sessionDao.insert(
-                Session(
-                    isValid = true,
-                    createdAt = Date(),
-                    lastRunningStationId = null,
-                    lastSyncDate = null,
-                    username = UUID.randomUUID().toString(),
-                    isPlaying = false,
-                    invalidationDate = null
-                )
-            )
-            session = sessionDao.getCurrentSession()!!
-        }
-        return session!!
-    }
-
-    /**
      * Start new session if current is invalid or doesn't exist
      */
     public suspend fun startNewSession(): Boolean {
@@ -140,6 +113,33 @@ class SessionRepository(private val sessionDao: SessionDao) {
 
     public suspend fun whichPlaying(): String? {
         return getCurrentSession().lastRunningStationId
+    }
+
+    /**
+     * Start new session only ignoring existence and validity
+     */
+    private suspend fun startNewSessionForce(): Session {
+        var session: Session? = null
+        withContext(context = Dispatchers.IO) {
+            session = sessionDao.getCurrentSession()
+            if (session != null) {
+                session!!.isValid = false
+                sessionDao.update(session!!)
+            }
+            sessionDao.insert(
+                Session(
+                    isValid = true,
+                    createdAt = Date(),
+                    lastRunningStationId = null,
+                    lastSyncDate = null,
+                    username = UUID.randomUUID().toString(),
+                    isPlaying = false,
+                    invalidationDate = null
+                )
+            )
+            session = sessionDao.getCurrentSession()!!
+        }
+        return session!!
     }
 
     companion object {

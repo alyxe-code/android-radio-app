@@ -13,12 +13,12 @@
 
     <fragment
         android:id="@+id/navigation_dashboard"
-        android:name="com.p2lem8dev.internetRadio.app.ui.saved_stations.SavedStationsFragment"
-        android:label="@string/title_saved_stations"
+        android:name="com.p2lem8dev.internetRadio.app.ui.dashboard.DashboardFragment"
+        android:label="@string/title_dashboard"
         tools:layout="@layout/fragment_saved_stations" />
 
     <fragment
-        android:id="@+id/navigation_notifications"
+        android:id="@+id/navigation_player"
         android:name="com.p2lem8dev.internetRadio.app.ui.player.PlayerFragment"
         android:label="@string/title_player"
         tools:layout="@layout/fragment_player" />

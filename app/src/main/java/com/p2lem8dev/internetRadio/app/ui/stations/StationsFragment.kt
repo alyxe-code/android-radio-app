@@ -1,10 +1,48 @@
 package com.p2lem8dev.internetRadio.app.ui.stations
 
 import android.content.Intent
+import android.os.Bundle
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.TextView
+import androidx.appcompat.app.ActionBar
+import androidx.appcompat.app.AppCompatActivity
+import androidx.databinding.DataBindingUtil
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.ViewModelProvider
+import com.p2lem8dev.internetRadio.R
+import com.p2lem8dev.internetRadio.app.InternetRadioApp
 import com.p2lem8dev.internetRadio.app.service.player.PlayerService
+import com.p2lem8dev.internetRadio.app.ui.utils.ListActionHandler
+import com.p2lem8dev.internetRadio.app.utils.Playlist
+import com.p2lem8dev.internetRadio.database.radio.entities.RadioStation
+import com.p2lem8dev.internetRadio.databinding.LayoutStationsBinding
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 
-open class StationsFragment : Fragment() {
+open class StationsFragment : Fragment(), ListActionHandler {
+
+    protected lateinit var stationsViewModel: StationsViewModel
+    protected lateinit var binding: LayoutStationsBinding
+    protected lateinit var stationsListAdapter: StationsListAdapter
+
+    open override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View? {
+        binding = DataBindingUtil.inflate(
+            inflater, R.layout.layout_stations, container, false
+        )
+        return binding.root
+    }
+
+    protected fun setActionBarTitle(titleId: Int) = setActionBarTitle(getString(titleId))
+
+    fun handleActivityCreated() {
+        stationsViewModel = ViewModelProvider(activity!!).get(StationsViewModel::class.java)
+    }
 
     protected fun invokeServicePlay(stationId: String, playlistSelector: Boolean) {
         val intent = Intent(context, PlayerService::class.java).apply {
@@ -16,5 +54,42 @@ open class StationsFragment : Fragment() {
             )
         }
         activity?.startForegroundService(intent)
+    }
+
+    protected fun setActionBarTitle(title: String) {
+        activity?.let { activity ->
+            (activity as AppCompatActivity).let { appCompatActivity ->
+                appCompatActivity.supportActionBar?.let { actionbar ->
+                    actionbar.displayOptions = ActionBar.DISPLAY_SHOW_CUSTOM
+                    actionbar.setCustomView(R.layout.actionbar_layout)
+                    actionbar.customView
+                        .findViewById<TextView>(R.id.actionbar_title)
+                        .text = title
+                }
+
+            }
+        }
+    }
+
+    open val playlistSelector: Boolean
+        get() = Playlist.PLAYLIST_SELECTOR_ALL
+
+    open val imagesSaveDirectory: String
+        get() = (activity?.application as InternetRadioApp)
+            .getImagesSaveDirectory()
+
+    open override fun onSetPlay(station: RadioStation) {
+        stationsViewModel
+            .usePlaylist(playlistSelector)
+            .setSelected(station)
+
+        invokeServicePlay(
+            station.stationId,
+            playlistSelector
+        )
+    }
+
+    open override fun onChangeFavorite(station: RadioStation) {
+        GlobalScope.launch { stationsViewModel.setFavoriteInvert(station) }
     }
 }

@@ -11,7 +11,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 
 class InternetRadioApp : Application() {
 
-    private val mRadioAPI: RadioAPI = Retrofit.Builder()
+    private val radioAPI: RadioAPI = Retrofit.Builder()
         .addConverterFactory(GsonConverterFactory.create())
         .baseUrl(RADIO_TOCHKA_API_HOST)
         .build()
@@ -25,7 +25,7 @@ class InternetRadioApp : Application() {
 
         RadioStationRepository.create(
             radioDb.getRadioStationsDao(),
-            mRadioAPI
+            radioAPI
         )
         SessionRepository.create(sessionDb.getSessionDao())
     }
@@ -36,5 +36,6 @@ class InternetRadioApp : Application() {
 
     companion object {
         const val RADIO_TOCHKA_API_HOST = "https://radio-tochka.com"
+        const val PING_HOST = "www.google.com"
     }
 }

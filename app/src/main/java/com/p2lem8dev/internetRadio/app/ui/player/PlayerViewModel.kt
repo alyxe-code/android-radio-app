@@ -48,11 +48,9 @@ class PlayerViewModel : ViewModel() {
 
     fun setStation(radioStation: RadioStation) {
         stationData.set(radioStation)
-        GlobalScope.launch {
-            val station = RadioStationRepository.get()
-                .loadOrUpdateRadioStation(radioStation.stationId)
 
-            stationData.set(station)
+        GlobalScope.launch {
+            RadioStationRepository.get().loadOrUpdateRadioStation(radioStation.stationId)
         }
     }
 

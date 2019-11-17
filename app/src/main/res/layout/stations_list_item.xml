@@ -9,10 +9,6 @@
             type="com.p2lem8dev.internetRadio.database.radio.entities.RadioStation" />
 
         <variable
-            name="showDetails"
-            type="Boolean" />
-
-        <variable
             name="viewHolder"
             type="com.p2lem8dev.internetRadio.app.ui.stations.StationsListViewHolder" />
 

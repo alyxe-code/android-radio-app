@@ -72,32 +72,39 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="32dp"
-            android:text="Country - Region - City"
+            android:textAlignment="center"
+            android:textSize="20sp"
+            app:city="@{viewModel.stationData.city}"
+            app:country="@{viewModel.stationData.country}"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/thumb" />
+            app:layout_constraintTop_toBottomOf="@+id/thumb"
+            app:region="@{viewModel.stationData.region}"
+            tools:text="USA - New York - New York City" />
 
         <TextView
             android:id="@+id/genres"
+            style="@style/TextAppearance.AppCompat.Body1"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:text="Pop - Hip Hop - R'n'B"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/location"
-            style="@style/TextAppearance.AppCompat.Body1"/>
+            app:text_array="@{viewModel.stationData.genres}"
+            tools:text="Hip-Hop, Rap, Jazz" />
 
         <TextView
             android:id="@+id/language"
+            style="@style/TextAppearance.AppCompat.Subhead"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:text="English"
+            android:text="@{viewModel.stationData.language}"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/genres"
-            style="@style/TextAppearance.AppCompat.Subhead"/>
+            tools:text="English" />
 
         <TextView
             android:id="@+id/listeners"
@@ -105,10 +112,11 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginBottom="32dp"
-            android:text="9999"
             app:layout_constraintBottom_toTopOf="@+id/sound_volume"
             app:layout_constraintEnd_toStartOf="@+id/space"
-            app:layout_constraintStart_toStartOf="parent" />
+            app:layout_constraintStart_toStartOf="parent"
+            app:num_value="@{viewModel.stationData.listeners}"
+            tools:text="9999" />
 
         <TextView
             android:id="@+id/votes"
@@ -116,30 +124,31 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginBottom="32dp"
-            android:text="9999"
             app:layout_constraintBottom_toTopOf="@+id/sound_volume"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toEndOf="@+id/space" />
+            app:layout_constraintStart_toEndOf="@+id/space"
+            app:num_value="@{viewModel.stationData.voted}"
+            tools:text="9999" />
 
         <ImageView
             android:id="@+id/listeners_icon"
             android:layout_width="30dp"
             android:layout_height="30dp"
             android:layout_marginBottom="16dp"
+            android:background="@drawable/ic_headphones"
             app:layout_constraintBottom_toTopOf="@+id/listeners"
             app:layout_constraintEnd_toEndOf="@+id/listeners"
-            app:layout_constraintStart_toStartOf="@+id/listeners"
-            android:background="@drawable/ic_headphones"/>
+            app:layout_constraintStart_toStartOf="@+id/listeners" />
 
         <ImageView
             android:id="@+id/votes_icon"
             android:layout_width="30dp"
             android:layout_height="30dp"
             android:layout_marginBottom="16dp"
+            android:background="@drawable/ic_favorite_white_24dp"
             app:layout_constraintBottom_toTopOf="@+id/votes"
             app:layout_constraintEnd_toEndOf="@+id/votes"
-            app:layout_constraintStart_toStartOf="@+id/votes"
-            android:background="@drawable/ic_favorite_white_24dp"/>
+            app:layout_constraintStart_toStartOf="@+id/votes" />
 
         <Space
             android:id="@+id/space"

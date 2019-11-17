@@ -12,6 +12,7 @@ import com.p2lem8dev.internetRadio.sync.SyncActivity
 open class NotificationFactory(protected val context: Context) {
 
     protected var notificationBuilder: Notification.Builder? = null
+
     protected lateinit var intent: Intent
 
     protected val applicationIcon: Icon =
@@ -22,16 +23,23 @@ open class NotificationFactory(protected val context: Context) {
         return this
     }
 
-    fun createTextStyle(title: String, text: String): NotificationFactory {
+    fun addAction(action: Notification.Action): NotificationFactory {
+        notificationBuilder?.addAction(action)
+        return this
+    }
+
+    fun createTextStyle(title: String? = null, text: String? = null): NotificationFactory {
         notificationBuilder = Notification.Builder(context, NOTIFICATION_DEFAULT_CHANNEL_ID)
             .setSmallIcon(applicationIcon)
-            .setContentTitle(title)
-            .setContentText(text)
+
+        title?.let { notificationBuilder?.setContentTitle(it) }
+        text?.let { notificationBuilder?.setContentText(it) }
 
         return this
     }
 
     fun createInfiniteLoadingType(title: String, text: String?): NotificationFactory {
+
         notificationBuilder = Notification.Builder(context, NOTIFICATION_SYNC_CHANNEL_ID)
             .setSmallIcon(applicationIcon)
             .setContentTitle(title)
@@ -43,6 +51,25 @@ open class NotificationFactory(protected val context: Context) {
 
         return this
     }
+
+    fun createProgress(
+        title: String? = null,
+        text: String,
+        max: Int,
+        progress: Int,
+        indeterminate: Boolean,
+        channelId: String
+    ): NotificationFactory {
+        notificationBuilder = Notification.Builder(context, channelId)
+            .setSmallIcon(applicationIcon)
+            .setContentText(text)
+            .setProgress(max, progress, indeterminate)
+
+        title?.let { notificationBuilder?.setContentTitle(it) }
+
+        return this
+    }
+
 
     fun createPlayerWidgetNotification(station: RadioStation, sessionToken: MediaSession.Token) =
         PlayerWidgetNotificationFactory.createNotification(context, station, sessionToken)

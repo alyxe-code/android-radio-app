@@ -1,26 +1,33 @@
 package com.p2lem8dev.internetRadio.app.data_binding
 
+import android.util.Log
 import android.view.View
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.databinding.BindingAdapter
 import com.bumptech.glide.Glide
-import com.bumptech.glide.load.resource.bitmap.CenterCrop
-import com.bumptech.glide.load.resource.bitmap.CenterInside
 import com.bumptech.glide.load.resource.bitmap.FitCenter
 import com.bumptech.glide.load.resource.bitmap.RoundedCorners
 import com.bumptech.glide.request.RequestOptions
+import java.lang.Exception
 
 
 @BindingAdapter("app:image_url")
 fun setImageViewByURL(imageView: ImageView, imageUrl: String?) {
-    Glide.with(imageView.context)
-        .load(imageUrl)
-        .apply(RequestOptions().apply {
-            transform(FitCenter())
-            transform(RoundedCorners(16))
-        })
-        .into(imageView)
+    try {
+        Glide.with(imageView.context)
+            .load(imageUrl)
+            .apply(RequestOptions().apply {
+                transform(FitCenter())
+                transform(RoundedCorners(16))
+            })
+            .into(imageView)
+    } catch (e: Exception) {
+        Log.wtf(
+            "VIEW_LOAD_IMAGE", "${e.message}" +
+                    e.stackTrace.joinToString("\n")
+        )
+    }
 }
 
 @BindingAdapter("app:num_value")
@@ -51,4 +58,23 @@ fun setTextViewProgress(textView: TextView, progressTotal: Int, progressCurrent:
     }
     textView.text = if (current == progressTotal && current != 0) "Finishing..."
     else "$current / $progressTotal"
+}
+
+@BindingAdapter(value = ["app:country", "app:region", "app:city"], requireAll = true)
+fun setTextByLocation(textView: TextView, country: String?, region: String?, city: String?) {
+    val array = arrayListOf<String>()
+    if (country != null) array.add(country)
+
+    if (region != null && city != null && region.contains(city)) {
+        array.add(city)
+    } else {
+        if (region != null) array.add(region)
+        if (city != null) array.add(city)
+    }
+    setTextByArray(textView, array)
+}
+
+@BindingAdapter("app:text_array")
+fun setTextByArray(textView: TextView, text_array: List<String>?) {
+    textView.text = text_array?.joinToString(" - ") ?: ""
 }

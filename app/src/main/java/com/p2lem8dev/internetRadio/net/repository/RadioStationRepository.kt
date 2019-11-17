@@ -412,6 +412,9 @@ class RadioStationRepository(
         } else {
             station.id = dbStation.id
             station.isFavorite = dbStation.isFavorite
+            if (station.imageUrl == null) {
+                station.imageUrl = dbStation.imageUrl
+            }
             stationsDao.update(station)
             false
         }

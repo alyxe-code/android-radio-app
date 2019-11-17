@@ -106,6 +106,13 @@ class PlayerFragment : Fragment() {
         playerViewModel.setActivityCallback(mActivityCallback)
 
         stationsViewModel = ViewModelProvider(activity!!).get(StationsViewModel::class.java)
+
+        GlobalScope.launch {
+            stationsViewModel.getSelectedStation().let {
+                playerViewModel.stationData.set(it.value)
+            }
+        }
+
         stationsViewModel.selectedStation.observe(activity!!, Observer {
             playerViewModel.setStation(it)
             setActionBarTitle(it.title)
@@ -124,21 +131,17 @@ class PlayerFragment : Fragment() {
                     }
                 }
                 if (stationsViewModel.getStations().value == null) {
-                    (if (stationsViewModel.playlistSelectorAny) {
-                        RadioStationRepository.get().getAllStations().first()
+                    (if (stationsViewModel.playlistSelector) {
+                        stationsViewModel.getAllStations().first()
                     } else {
-                        RadioStationRepository.get().getAllFavoriteStations().first()
+                        stationsViewModel.getAllFavoriteStations().first()
                     }).let {
                         stationsViewModel.setSelected(it, updateSession = true, postValue = true)
                     }
                 } else {
-                    stationsViewModel.getStations().value?.first()?.let {
+                    stationsViewModel.getAllStations().first().let {
                         stationsViewModel.setSelected(it, updateSession = true, postValue = true)
                     }
-                }
-
-                withContext(context = Dispatchers.Main) {
-
                 }
             }
         }
@@ -190,7 +193,7 @@ class PlayerFragment : Fragment() {
             )
             putExtra(
                 PlayerService.EXTRA_PLAYLIST_SELECTOR,
-                if (stationsViewModel.playlistSelectorAny)
+                if (stationsViewModel.playlistSelector)
                     PlayerService.EXTRA_PLAYLIST_SELECTOR_ANY
                 else
                     PlayerService.EXTRA_PLAYLIST_SELECTOR_FAVORITE

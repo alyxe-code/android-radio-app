@@ -24,10 +24,11 @@ class MainActivity : AppCompatActivity() {
 
         stationsViewModel = ViewModelProvider(this).get(StationsViewModel::class.java)
 
-        binding.navView.setupWithNavController(findNavController(R.id.nav_host_fragment))
-
-        GlobalScope.launch {
-            SessionRepository.get().startNewSession()
+        binding.navView.let {
+            it.setupWithNavController(findNavController(R.id.nav_host_fragment))
+            it.selectedItemId = R.id.navigation_dashboard
         }
+
+        GlobalScope.launch { SessionRepository.get().startNewSession() }
     }
 }

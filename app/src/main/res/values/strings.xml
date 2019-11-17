@@ -4,7 +4,7 @@
     <string name="title_activity_splash">INET Radio</string>
     <string name="title_activity_sync">INET Radio</string>
     <string name="title_home">Home</string>
-    <string name="title_saved_stations">Saved Stations</string>
+    <string name="title_dashboard">Dashboard</string>
     <string name="title_player">Player</string>
     <string name="loading_stations_list">Loading stations list</string>
     <string name="loading_0_0">0 / 0</string>

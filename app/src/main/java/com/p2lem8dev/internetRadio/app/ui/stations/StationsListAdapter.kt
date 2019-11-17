@@ -10,9 +10,9 @@ import com.p2lem8dev.internetRadio.database.radio.entities.RadioStation
 import com.p2lem8dev.internetRadio.databinding.StationsListItemBinding
 
 class StationsListAdapter(
-    private val showDetails: Boolean,
     private val listActionHandler: ListActionHandler
 ) : RecyclerView.Adapter<StationsListViewHolder>() {
+
     private var data = ArrayList<RadioStation>()
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): StationsListViewHolder {
@@ -29,7 +29,7 @@ class StationsListAdapter(
     }
 
     override fun onBindViewHolder(holder: StationsListViewHolder, position: Int) {
-        holder.bind(data[position], showDetails, listActionHandler)
+        holder.bind(data[position], listActionHandler)
     }
 
     fun postData(data: List<RadioStation>) {
