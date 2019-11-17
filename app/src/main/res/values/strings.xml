@@ -10,4 +10,8 @@
     <string name="loading_0_0">0 / 0</string>
     <string name="no_internet_connection">No internet connection</string>
     <string name="application_logo">Application logo</string>
+    <string name="sync_proc_type__fetch">Fetching</string>
+    <string name="sync_proc_type__filter">Filtering</string>
+    <string name="sync_proc_type__download_resources">Downloading Resources</string>
+    <string name="sync_proc_type__finish">Finishing</string>
 </resources>

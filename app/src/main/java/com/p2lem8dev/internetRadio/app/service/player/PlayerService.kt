@@ -262,7 +262,12 @@ class PlayerService : Service() {
             playlistSelector,
             stationData!!.isFavorite
         )
-        notification.bindToActivity(MainActivity::class.java)
+        notification.bindToActivityWithExtras(MainActivity::class.java) {
+            it.putExtra(
+                MainActivity.EXTRA_NAVIGATION_LAUNCH,
+                MainActivity.EXTRA_NAVIGATION_PLAYER
+            )
+        }
 
         // Show notification
         startForeground(NotificationFactory.NOTIFICATION_PLAYER_ID, notification.build())
@@ -333,7 +338,11 @@ class PlayerService : Service() {
                         stationId = stationData!!.stationId
                         handleActionPlay()
                         withContext(context = Dispatchers.Main) {
-                            Toast.makeText(applicationContext, "Unable to play radio", Toast.LENGTH_LONG).show()
+                            Toast.makeText(
+                                applicationContext,
+                                "Unable to play radio",
+                                Toast.LENGTH_LONG
+                            ).show()
                         }
                     }
                 }

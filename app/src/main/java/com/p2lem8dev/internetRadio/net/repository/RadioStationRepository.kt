@@ -70,15 +70,18 @@ class RadioStationRepository(
     suspend fun loadRadiosFromAllPages(
         onlyRunning: Boolean,
         saveImagesDirectory: String,
-        onNext: (suspend (station: RadioStation) -> Unit)?
+        onNextFilter: ((station: BaseRadioInfo) -> Unit)? = null,
+        onNextDownloadImage: ((station: RadioStation) -> Unit)? = null,
+        onNextSave: (suspend (station: RadioStation) -> Unit)?
     ) {
         var pageIndex = 0
         while (true) {
             val radios = loadRadiosFromPage(pageIndex) ?: break
+            Log.d("SYNC", "Found page $pageIndex ${radios.size}")
             pageIndex++
 
             GlobalScope.launch {
-                handleLoadedPage(radios, onlyRunning, saveImagesDirectory, onNext)
+                handleLoadedPage(radios, onlyRunning, saveImagesDirectory, onNextFilter, onNextDownloadImage, onNextSave)
             }
         }
     }
@@ -96,15 +99,29 @@ class RadioStationRepository(
         pageRadios: List<BaseRadioInfo>,
         onlyRunning: Boolean,
         saveImagesDirectory: String,
-        onNext: (suspend (station: RadioStation) -> Unit)?
+        onNextFilter: ((station: BaseRadioInfo) -> Unit)? = null,
+        onNextDownloadImage: ((station: RadioStation) -> Unit)? = null,
+        onNextSave: (suspend (station: RadioStation) -> Unit)?
     ) {
         pageRadios
-            .mapNotNull { filterLoadedRadios(it, onlyRunning) }
-            .map { RadioStationFactory.fromBaseRadioInfo(it) }
-            .map { it.apply { imageUrl = downloadRadioImage(it.stationId, saveImagesDirectory) } }
+            .mapNotNull {
+                Log.d("SYNC_HANDLE", "Filter ${it.title}")
+                onNextFilter?.invoke(it)
+                filterLoadedRadios(it, onlyRunning)
+            }
+            .map {
+                Log.d("SYNC_HANDLE", "Create from base ${it.title}")
+                RadioStationFactory.fromBaseRadioInfo(it)
+            }
+            .map {
+                Log.d("SYNC_HANDLE", "Download image ${it.title}")
+                onNextDownloadImage?.invoke(it)
+                it.apply { imageUrl = downloadRadioImage(it.stationId, saveImagesDirectory) }
+            }
             .forEach {
+                Log.d("SYNC_HANDLE", "Saving ${it.title}")
                 createOrUpdateStationBase(it)
-                onNext?.invoke(it)
+                onNextSave?.invoke(it)
             }
     }
 
@@ -132,118 +149,6 @@ class RadioStationRepository(
 
     private var canContinueLoadPages = true
 
-    suspend fun loadAllStationsAsync(
-        onlyRunning: Boolean,
-        saveImages: Boolean,
-        saveImagesDirectory: String? = null,
-        onNext: (suspend (station: BaseRadioInfo) -> Unit)?
-    ) {
-        var pageIndex = 0
-        val unhandledRadios = arrayListOf<BaseRadioInfo>()
-        while (true) {
-            if (!canContinueLoadPages) break
-
-            // load next page
-            GlobalScope.launch(context = Dispatchers.IO) {
-
-                var pageStations: List<BaseRadioInfo>
-
-                // ensure that every page is received
-                while (true) {
-                    try {
-                        pageStations = api.getPage(pageIndex)
-                        break
-                    } catch (e: Exception) {
-                        InternetConnectionTester.waitConnection()
-                    }
-                }
-
-                if (pageStations.isEmpty()) {
-                    canContinueLoadPages = false
-                    return@launch
-                }
-
-                val toDB = arrayListOf<BaseRadioInfo>()
-
-                // handle received page stations
-                pageStations.forEach { baseRadio ->
-                    val links = arrayListOf<Link>()
-                    baseRadio.links.forEach { link ->
-                        Log.d("SYNC", "Trying link ${link.url}")
-                        URLConverterFactory.extract(
-                            link.url,
-                            onlyRunning,
-                            urlConverterFactories
-                        )
-                            ?.minBy { URLUtil.isHttpsUrl(it) }
-                            ?.let { links.add(Link(it, link.bitrate, link.app)) }
-                    }
-
-                    if (links.isNotEmpty()) {
-                        toDB.add(baseRadio)
-                    }
-                }
-
-                toDB.forEach { baseRadio ->
-                    val radioStation = RadioStationFactory.fromBaseRadioInfo(baseRadio)
-
-                    if (saveImages && saveImagesDirectory != null) {
-                        val imageURL = downloadRadioImage(baseRadio.id, saveImagesDirectory)
-                        radioStation.imageUrl = imageURL
-                    }
-
-                    createOrUpdateStationBase(radioStation)
-                    onNext?.invoke(baseRadio)
-                }
-            }
-
-            pageIndex++
-        }
-    }
-
-
-    /**
-     * Load all stations via API service
-     * For each found station it launches a new coroutine
-     */
-    suspend fun loadAllStations(
-        onlyRunning: Boolean = false,
-        downloadImages: Boolean = true,
-        downloadDestinationDirectory: String? = null,
-        onNext: (suspend (station: BaseRadioInfo) -> Unit)? = null
-    ) {
-        var pageIndex = 0
-        val unhandledRadios = arrayListOf<BaseRadioInfo>()
-        while (true) {
-            var pageStations: List<BaseRadioInfo>
-            while (true) {
-                try {
-                    pageStations = api.getPage(pageIndex)
-                    pageStations.forEach {
-                        try {
-                            handleStationLoaded(
-                                it,
-                                onlyRunning,
-                                downloadImages,
-                                downloadDestinationDirectory,
-                                onNext
-                            )
-                        } catch (e: Exception) {
-                            unhandledRadios.add(it)
-                        }
-                    }
-
-                    pageIndex++
-                    break
-                } catch (e: Exception) {
-                    InternetConnectionTester.waitConnection()
-                }
-            }
-            Log.d("SYNC", "Load page $pageIndex | found ${pageStations.size} stations")
-            if (pageStations.isEmpty()) break
-            Thread.sleep(1)
-        }
-    }
 
     private var toDatabaseRadios = ArrayList<BaseRadioInfo>()
 
@@ -272,48 +177,6 @@ class RadioStationRepository(
                 }
             }
             toDatabaseRadios = arrayListOf()
-        }
-    }
-
-    private fun handleStationLoaded(
-        station: BaseRadioInfo,
-        onlyRunning: Boolean,
-        downloadImages: Boolean = true,
-        downloadDestinationDirectory: String? = null,
-        onNext: (suspend (station: BaseRadioInfo) -> Unit)?
-    ) = GlobalScope.launch(context = Dispatchers.IO) {
-        Log.d("SYNC", "Loading ${station.id} ${station.title}")
-        try {
-            val links = arrayListOf<Link>()
-            station.links.forEach { link ->
-                Log.d("SYNC", "Trying link ${link.url}")
-                URLConverterFactory.extract(
-                    link.url,
-                    onlyRunning,
-                    urlConverterFactories
-                )
-                    ?.minBy { URLUtil.isHttpsUrl(it) }
-                    ?.let { links.add(Link(it, link.bitrate, link.app)) }
-            }
-            if (links.isNotEmpty()) {
-                Log.d("SYNC", "Saving station ${station.id} ${station.title}")
-                station.links = links
-                addToDBQueue(
-                    station,
-                    downloadImages,
-                    downloadDestinationDirectory,
-                    onNext
-                )
-            } else {
-                Log.d("SYNC", "Ignore station ${station.id} ${station.title}")
-            }
-        } catch (e: Exception) {
-            Log.d(
-                "SYNC",
-                "LOAD | Station ${station.id} thrown exception\n" +
-                        "Message: ${e.message}\n" +
-                        e.stackTrace.joinToString("\n")
-            )
         }
     }
 

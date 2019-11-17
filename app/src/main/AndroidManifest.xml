@@ -35,9 +35,6 @@
         <activity
             android:name=".app.MainActivity"
             android:label="@string/title_activity_main" />
-        <activity
-            android:name=".sync.SyncActivity"
-            android:label="@string/title_activity_sync" />
     </application>
 
 </manifest>

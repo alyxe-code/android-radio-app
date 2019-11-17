@@ -8,7 +8,6 @@
             name="viewModel"
             type="com.p2lem8dev.internetRadio.app.ui.player.PlayerViewModel" />
 
-        <import type="android.view.View" />
     </data>
 
     <androidx.constraintlayout.widget.ConstraintLayout
@@ -52,7 +51,6 @@
             android:id="@+id/btn_next"
             style="@style/PlayerButtons.PreviousNext.Next"
             android:onClick="@{() -> viewModel.handleClickNext()}"
-            android:visibility="@{viewModel.hasNext() ? View.VISIBLE : View.GONE}"
             app:layout_constraintBottom_toBottomOf="@+id/btn_play"
             app:layout_constraintStart_toEndOf="@+id/btn_play"
             app:layout_constraintTop_toTopOf="@+id/btn_play" />
@@ -61,7 +59,6 @@
             android:id="@+id/btn_previous"
             style="@style/PlayerButtons.PreviousNext.Previous"
             android:onClick="@{() -> viewModel.handleClickPrevious()}"
-            android:visibility="@{viewModel.hasPrevious() ? View.VISIBLE : View.GONE}"
             app:layout_constraintBottom_toBottomOf="@+id/btn_play"
             app:layout_constraintEnd_toStartOf="@+id/btn_play"
             app:layout_constraintTop_toTopOf="@+id/btn_play" />
@@ -140,15 +137,17 @@
             app:layout_constraintEnd_toEndOf="@+id/listeners"
             app:layout_constraintStart_toStartOf="@+id/listeners" />
 
-        <ImageView
+        <ImageButton
             android:id="@+id/votes_icon"
             android:layout_width="30dp"
             android:layout_height="30dp"
             android:layout_marginBottom="16dp"
-            android:background="@drawable/ic_favorite_white_24dp"
+            android:background="@{ viewModel.isFavorite ? @drawable/ic_favorite_white_24dp : @drawable/ic_favorite_border_black_24dp }"
+            android:onClick="@{() -> viewModel.handleClickChangeFavorite()}"
             app:layout_constraintBottom_toTopOf="@+id/votes"
             app:layout_constraintEnd_toEndOf="@+id/votes"
-            app:layout_constraintStart_toStartOf="@+id/votes" />
+            app:layout_constraintStart_toStartOf="@+id/votes"
+            tools:background="@drawable/ic_favorite_white_24dp" />
 
         <Space
             android:id="@+id/space"

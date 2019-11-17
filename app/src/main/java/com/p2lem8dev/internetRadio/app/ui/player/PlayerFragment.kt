@@ -4,7 +4,6 @@ import android.content.Context
 import android.content.Intent
 import android.media.AudioManager
 import android.os.Bundle
-import android.util.Log
 import android.widget.ImageButton
 import android.widget.SeekBar
 import android.widget.TextView
@@ -16,13 +15,11 @@ import androidx.lifecycle.ViewModelProvider
 import com.google.android.material.snackbar.Snackbar
 import com.p2lem8dev.internetRadio.R
 import com.p2lem8dev.internetRadio.app.service.player.PlayerService
-import com.p2lem8dev.internetRadio.app.ui.stations.StationsFragment
 import com.p2lem8dev.internetRadio.app.ui.stations.StationsViewModel
 import com.p2lem8dev.internetRadio.app.ui.utils.BindingFragment
 import com.p2lem8dev.internetRadio.app.utils.Playlist
 import com.p2lem8dev.internetRadio.database.radio.entities.RadioStation
 import com.p2lem8dev.internetRadio.databinding.FragmentPlayerBinding
-import com.p2lem8dev.internetRadio.net.repository.RadioStationRepository
 import com.p2lem8dev.internetRadio.net.repository.SessionRepository
 import kotlinx.coroutines.*
 import kotlin.math.roundToInt
@@ -97,6 +94,16 @@ class PlayerFragment : BindingFragment<FragmentPlayerBinding>(R.layout.fragment_
                         PlayerService.ACTION_STOP
                     } else PlayerService.ACTION_PLAY
                 )
+            }
+        }
+
+        override fun onClickChangeFavorite() {
+            playerViewModel.stationData.get()?.let {
+                GlobalScope.launch {
+                    playerViewModel.stationData.set(
+                        stationsViewModel.invertFavorite(it)
+                    )
+                }
             }
         }
     }

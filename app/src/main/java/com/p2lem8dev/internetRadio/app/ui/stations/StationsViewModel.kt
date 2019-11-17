@@ -35,6 +35,22 @@ class StationsViewModel : ViewModel() {
 
     var isLoading = false
 
+    private var jobUpdateSelectedStation: Job? = null
+
+    init {
+        jobUpdateSelectedStation = GlobalScope.launch {
+            while (true) {
+                Thread.sleep(100)
+                SessionRepository.get().getCurrentSession().lastRunningStationId?.let {
+                    if (it == _selectedStation.value?.stationId) {
+                        return@let
+                    }
+                    _selectedStation.postValue(RadioStationRepository.get().findStation(it))
+                }
+            }
+        }
+    }
+
     private fun loadSelectedStation() = GlobalScope.launch(context = Dispatchers.IO) {
         if (_selectedStation.value != null) {
             return@launch
@@ -70,26 +86,18 @@ class StationsViewModel : ViewModel() {
         }
     }
 
-    suspend fun setFavoriteInvert(station: RadioStation) {
+    suspend fun invertFavorite(station: RadioStation): RadioStation {
         RadioStationRepository.get().invertFavorite(station.stationId)
+        return station.apply { isFavorite = !isFavorite }
     }
 
     fun setSelected(
         station: RadioStation,
-        updateSession: Boolean = true,
         postValue: Boolean = false
     ) {
         findStation(station.stationId) ?: return
-        if (postValue) {
-            _selectedStation.postValue(station)
-        } else {
-            _selectedStation.value = station
-        }
-        if (updateSession) {
-            GlobalScope.launch {
-                SessionRepository.get()
-                    .updateLastRunningStation(station.stationId)
-            }
+        GlobalScope.launch {
+            SessionRepository.get().updateLastRunningStation(station.stationId)
         }
     }
 

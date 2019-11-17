@@ -13,4 +13,5 @@ interface ListActionHandler {
      * When click to change favorite state
      */
     fun onChangeFavorite(station: RadioStation)
+
 }

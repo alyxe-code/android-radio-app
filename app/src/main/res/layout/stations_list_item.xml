@@ -63,7 +63,7 @@
             android:id="@+id/imageView4"
             android:layout_width="32dp"
             android:layout_height="32dp"
-            android:background="@drawable/ic_player_play_normal"
+            android:background="@{ viewHolder.isPlaying ? @drawable/ic_player_stop_normal : @drawable/ic_player_play_normal }"
             android:onClick="@{() -> viewHolder.setSelected()}"
             app:layout_constraintBottom_toBottomOf="@+id/imageView2"
             app:layout_constraintEnd_toEndOf="parent"

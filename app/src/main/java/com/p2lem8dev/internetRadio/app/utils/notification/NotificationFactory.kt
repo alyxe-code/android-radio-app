@@ -7,7 +7,6 @@ import android.graphics.drawable.Icon
 import android.media.session.MediaSession
 import com.p2lem8dev.internetRadio.R
 import com.p2lem8dev.internetRadio.database.radio.entities.RadioStation
-import com.p2lem8dev.internetRadio.sync.SyncActivity
 
 open class NotificationFactory(protected val context: Context) {
 
@@ -85,6 +84,21 @@ open class NotificationFactory(protected val context: Context) {
         )
         return this
     }
+
+    fun bindToActivityWithExtras(activity: Class<out Activity>, setupExtra: (Intent) -> Unit): NotificationFactory {
+        notificationBuilder?.setContentIntent(
+            PendingIntent.getActivity(
+                context,
+                0,
+                Intent(context, activity).apply {
+                    setupExtra(this)
+                },
+                PendingIntent.FLAG_UPDATE_CURRENT
+            )
+        )
+        return this
+    }
+
 
     fun build(): Notification? {
         return notificationBuilder?.build()

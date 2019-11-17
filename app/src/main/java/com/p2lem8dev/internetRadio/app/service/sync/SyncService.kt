@@ -1,7 +1,6 @@
 package com.p2lem8dev.internetRadio.app.service.sync
 
 import android.app.Notification
-import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
@@ -10,9 +9,9 @@ import android.graphics.drawable.Icon
 import android.os.IBinder
 import android.util.Log
 import com.p2lem8dev.internetRadio.R
-import com.p2lem8dev.internetRadio.app.MainActivity
 import com.p2lem8dev.internetRadio.app.utils.notification.NotificationFactory
 import com.p2lem8dev.internetRadio.net.repository.RadioStationRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -23,15 +22,24 @@ class SyncService : Service() {
     /**
      * True after synchronization process finally finished
      */
-    public val isSynchronized: Boolean
+    public var isSynchronized: Boolean
         get() = _isSynchronized
+        private set(value) {
+            _isSynchronized = value
+        }
 
     private var _isRunning: Boolean = false
     /**
      * True when synchronizing
      */
-    public val isRunning: Boolean
+    public var isRunning: Boolean
         get() = _isRunning
+        private set(value) {
+            _isRunning = value
+            if (value) {
+                isSynchronized = false
+            }
+        }
 
     private var imagesDownloadDir: String? = null
 
@@ -55,21 +63,26 @@ class SyncService : Service() {
         instance = this
     }
 
-    private var syncStationsAmount = 0
-
     private fun handleActionStartLoadBase() {
-        Log.d("SYNC_SERVICE", "Loading base...")
-        createOrUpdateNotification()
+        isRunning = true
+
+        createOrUpdateNotification("Fetching stations")
         GlobalScope.launch {
             RadioStationRepository.get().loadRadiosFromAllPages(
                 onlyRunning = true,
-                saveImagesDirectory = imagesDownloadDir!!
-            ) {
-                createOrUpdateNotification(it.title)
-                onNextLoaded?.invoke()
-                syncStationsAmount++
-                checkStopNotification()
-            }
+                saveImagesDirectory = imagesDownloadDir!!,
+                onNextFilter = {
+                    checkStopNotification()
+                },
+                onNextDownloadImage = {
+                    checkStopNotification()
+                },
+                onNextSave = {
+                    Log.d("SYNC", "Loaded ${it.title}")
+                    checkStopNotification()
+                    onNextSaved?.invoke()
+                }
+            )
         }
         instance = this
     }
@@ -95,7 +108,6 @@ class SyncService : Service() {
                     )
                 )
             )
-            .bindToActivity(MainActivity::class.java)
             .build()
 
         NotificationFactory.registerNotificationChannel(
@@ -112,19 +124,13 @@ class SyncService : Service() {
         // stop job
         jobCheckStopNotification?.cancel()
         // start again
-        jobCheckStopNotification = GlobalScope.launch {
+        jobCheckStopNotification = GlobalScope.launch(context = Dispatchers.IO) {
             Thread.sleep(TIME_STOP_NOTIFICATION_TIMEOUT)
 
-            // stop after timeout | it won't be restarted
-            // create notification to show that process has been finished
-            val notification = NotificationFactory(applicationContext).createTextStyle(
-                "Synchronization",
-                "Synchronization has been finished. Synced $syncStationsAmount stations"
-            ).build()
-
-            stopForeground(true)
-            startForeground(NotificationFactory.NOTIFICATION_DEFAULT_ID, notification)
             stopForeground(false)
+
+            isSynchronized = true
+            isRunning = false
 
             // cancel job
             jobCheckStopNotification?.cancel()
@@ -145,7 +151,7 @@ class SyncService : Service() {
             return instance
         }
 
-        private var onNextLoaded: (() -> Unit)? = null
+        private var onNextSaved: (() -> Unit)? = null
 
         fun start(
             context: Context,
@@ -158,7 +164,7 @@ class SyncService : Service() {
                 action = if (loadAll) ACTION_START_LOAD_ALL else ACTION_START_LOAD_BASE
                 putExtra(EXTRA_IMAGES_DOWNLOAD_DIR, imagesDownloadDir)
             })
-            this.onNextLoaded = onNextLoaded
+            this.onNextSaved = onNextLoaded
         }
 
         fun stop(context: Context) {

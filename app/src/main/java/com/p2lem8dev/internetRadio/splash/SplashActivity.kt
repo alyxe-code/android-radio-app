@@ -4,7 +4,6 @@ import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import com.p2lem8dev.internetRadio.app.MainActivity
-import com.p2lem8dev.internetRadio.sync.SyncActivity
 
 class SplashActivity : AppCompatActivity() {
 

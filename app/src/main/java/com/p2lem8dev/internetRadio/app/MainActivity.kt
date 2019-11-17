@@ -25,18 +25,33 @@ class MainActivity : AppCompatActivity() {
 
         stationsViewModel = ViewModelProvider(this).get(StationsViewModel::class.java)
 
-        binding.navView.let {
-            it.setupWithNavController(findNavController(R.id.nav_host_fragment))
-            it.selectedItemId = R.id.navigation_player
+        binding.navView.setupWithNavController(findNavController(R.id.nav_host_fragment))
+
+        intent.getStringExtra(EXTRA_NAVIGATION_LAUNCH)?.let {
+            binding.navView.selectedItemId = when (it) {
+                EXTRA_NAVIGATION_HOME -> R.id.navigation_home
+                EXTRA_NAVIGATION_DASHBOARD -> R.id.navigation_dashboard
+                EXTRA_NAVIGATION_PLAYER -> R.id.navigation_player
+                else -> R.id.navigation_home
+            }
         }
+
 
         GlobalScope.launch {
             SessionRepository.get().startNewSession()
             if (!PlayerService.isPlaying()) {
-                SessionRepository.get().setRadioStopped(
-                    SessionRepository.get().getCurrentSession().lastRunningStationId
-                )
+                SessionRepository.get().getCurrentSession().lastRunningStationId?.let {
+                    SessionRepository.get().setRadioStopped(it)
+                }
             }
         }
+
+    }
+
+    companion object {
+        const val EXTRA_NAVIGATION_LAUNCH = "extra::navigation::launch"
+        const val EXTRA_NAVIGATION_HOME = "extra::navigation::home"
+        const val EXTRA_NAVIGATION_DASHBOARD = "extra::navigation::dashboard"
+        const val EXTRA_NAVIGATION_PLAYER = "extra::navigation::player"
     }
 }

@@ -14,11 +14,15 @@ class PlayerViewModel : ViewModel() {
 
     var stationData: ObservableField<RadioStation> = ObservableField()
     val isPlaying = ObservableField<Boolean>(false)
+    val isFavorite
+        get() = stationData.get()?.isFavorite ?: false
+
 
     interface ActivityCallback {
         fun onClickNext(isPlaying: Boolean)
         fun onClickPrevious(isPlaying: Boolean)
         fun onClickPlayStop(isPlaying: Boolean)
+        fun onClickChangeFavorite()
     }
 
     private var mActivityCallback: ActivityCallback? = null
@@ -40,12 +44,8 @@ class PlayerViewModel : ViewModel() {
         mActivityCallback?.onClickPlayStop(isPlaying.get()!!)
     }
 
-    fun hasNext(): Boolean {
-        return true
-    }
-
-    fun hasPrevious(): Boolean {
-        return true
+    fun handleClickChangeFavorite() {
+        mActivityCallback?.onClickChangeFavorite()
     }
 
     fun setStation(radioStation: RadioStation) {
@@ -53,7 +53,9 @@ class PlayerViewModel : ViewModel() {
 
         GlobalScope.launch {
             RadioStationRepository.get()
-                .loadOrUpdateRadioStation(radioStation.stationId)
+                .loadOrUpdateRadioStation(radioStation.stationId)?.let {
+                    stationData.set(it)
+                }
         }
     }
 

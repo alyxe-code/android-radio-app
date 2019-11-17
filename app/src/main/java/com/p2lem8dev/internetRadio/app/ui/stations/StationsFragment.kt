@@ -1,20 +1,13 @@
 package com.p2lem8dev.internetRadio.app.ui.stations
 
 import android.content.Intent
-import android.os.Bundle
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
 import android.widget.TextView
 import androidx.appcompat.app.ActionBar
 import androidx.appcompat.app.AppCompatActivity
-import androidx.databinding.DataBindingUtil
-import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import com.p2lem8dev.internetRadio.R
 import com.p2lem8dev.internetRadio.app.InternetRadioApp
 import com.p2lem8dev.internetRadio.app.service.player.PlayerService
-import com.p2lem8dev.internetRadio.app.ui.home.HomeFragment
 import com.p2lem8dev.internetRadio.app.ui.utils.BindingFragment
 import com.p2lem8dev.internetRadio.app.ui.utils.ListActionHandler
 import com.p2lem8dev.internetRadio.app.utils.Playlist
@@ -79,7 +72,7 @@ open class StationsFragment : BindingFragment<LayoutStationsBinding>(R.layout.la
     }
 
     open override fun onChangeFavorite(station: RadioStation) {
-        GlobalScope.launch { stationsViewModel.setFavoriteInvert(station) }
+        GlobalScope.launch { stationsViewModel.invertFavorite(station) }
     }
 
     protected var jobHideRefresh: Job? = null
