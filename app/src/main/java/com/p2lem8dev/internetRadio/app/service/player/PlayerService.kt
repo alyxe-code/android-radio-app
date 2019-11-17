@@ -428,5 +428,10 @@ class PlayerService : Service() {
         fun isRunning(): Boolean {
             return playerService != null
         }
+
+        fun isPlaying(): Boolean {
+            if (!isRunning()) return false
+            return playerService?.isPlaying!!
+        }
     }
 }

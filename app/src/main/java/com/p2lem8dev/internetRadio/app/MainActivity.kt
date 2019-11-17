@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.findNavController
 import androidx.navigation.ui.setupWithNavController
 import com.p2lem8dev.internetRadio.R
+import com.p2lem8dev.internetRadio.app.service.player.PlayerService
 import com.p2lem8dev.internetRadio.app.ui.stations.StationsViewModel
 import com.p2lem8dev.internetRadio.databinding.ActivityMainBinding
 import com.p2lem8dev.internetRadio.net.repository.SessionRepository
@@ -26,9 +27,16 @@ class MainActivity : AppCompatActivity() {
 
         binding.navView.let {
             it.setupWithNavController(findNavController(R.id.nav_host_fragment))
-            it.selectedItemId = R.id.navigation_dashboard
+            it.selectedItemId = R.id.navigation_player
         }
 
-        GlobalScope.launch { SessionRepository.get().startNewSession() }
+        GlobalScope.launch {
+            SessionRepository.get().startNewSession()
+            if (!PlayerService.isPlaying()) {
+                SessionRepository.get().setRadioStopped(
+                    SessionRepository.get().getCurrentSession().lastRunningStationId
+                )
+            }
+        }
     }
 }

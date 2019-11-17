@@ -14,29 +14,18 @@ import androidx.lifecycle.ViewModelProvider
 import com.p2lem8dev.internetRadio.R
 import com.p2lem8dev.internetRadio.app.InternetRadioApp
 import com.p2lem8dev.internetRadio.app.service.player.PlayerService
+import com.p2lem8dev.internetRadio.app.ui.home.HomeFragment
+import com.p2lem8dev.internetRadio.app.ui.utils.BindingFragment
 import com.p2lem8dev.internetRadio.app.ui.utils.ListActionHandler
 import com.p2lem8dev.internetRadio.app.utils.Playlist
 import com.p2lem8dev.internetRadio.database.radio.entities.RadioStation
 import com.p2lem8dev.internetRadio.databinding.LayoutStationsBinding
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
 
-open class StationsFragment : Fragment(), ListActionHandler {
+open class StationsFragment : BindingFragment<LayoutStationsBinding>(R.layout.layout_stations), ListActionHandler {
 
     protected lateinit var stationsViewModel: StationsViewModel
-    protected lateinit var binding: LayoutStationsBinding
     protected lateinit var stationsListAdapter: StationsListAdapter
-
-    open override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View? {
-        binding = DataBindingUtil.inflate(
-            inflater, R.layout.layout_stations, container, false
-        )
-        return binding.root
-    }
 
     protected fun setActionBarTitle(titleId: Int) = setActionBarTitle(getString(titleId))
 
@@ -91,5 +80,43 @@ open class StationsFragment : Fragment(), ListActionHandler {
 
     open override fun onChangeFavorite(station: RadioStation) {
         GlobalScope.launch { stationsViewModel.setFavoriteInvert(station) }
+    }
+
+    protected var jobHideRefresh: Job? = null
+
+    protected open fun loadStations() {
+        GlobalScope.launch {
+            jobHideRefresh?.cancel()
+            if (!stationsViewModel.isLoading) {
+                stationsViewModel.loadStations(context!!, imagesSaveDirectory)
+            }
+            startJobHideRefresh()
+        }
+    }
+
+    protected open fun startJobHideRefresh() {
+        jobHideRefresh = GlobalScope.launch {
+            if (!binding.swipeRefresh.isRefreshing) {
+                withContext(context = Dispatchers.Main) {
+                    binding.swipeRefresh.isRefreshing = true
+                }
+            }
+            while (true) {
+                if (stationsViewModel.allStations.value != null &&
+                    stationsViewModel.allStations.value!!.size >= HIDE_REFRESH_STATIONS_MAX
+                ) {
+                    break
+                }
+                Thread.sleep(HIDE_REFRESH_TIMEOUT / 10)
+                break
+            }
+            stationsViewModel.isLoading = false
+        }
+    }
+
+    companion object {
+        const val HIDE_REFRESH_TIMEOUT = 2000L
+        const val HIDE_REFRESH_STATIONS_MAX = 10
+        const val SYNC_TEST_TIMEOUT = 2000L
     }
 }

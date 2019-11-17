@@ -11,8 +11,6 @@ import kotlinx.coroutines.*
 
 class HomeFragment : StationsFragment(), ListActionHandler, SwipeRefreshLayout.OnRefreshListener {
 
-    private var jobHideRefresh: Job? = null
-
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
         handleActivityCreated()
@@ -24,14 +22,15 @@ class HomeFragment : StationsFragment(), ListActionHandler, SwipeRefreshLayout.O
         stationsListAdapter = StationsListAdapter(this)
         binding.recyclerView.adapter = stationsListAdapter
 
-        GlobalScope.launch {
-            Thread.sleep(400)
+        GlobalScope.launch(context = Dispatchers.IO) {
+            Thread.sleep(SYNC_TEST_TIMEOUT)
             stationsViewModel.allStations.value.let {
                 if (it == null || it.isEmpty()) {
                     loadStations()
                 }
             }
         }
+
         stationsViewModel.allStations.observe(activity!!, Observer {
             stationsListAdapter.postData(it)
             binding.notifyChange()
@@ -45,39 +44,5 @@ class HomeFragment : StationsFragment(), ListActionHandler, SwipeRefreshLayout.O
 
     override fun onRefresh() {
         loadStations()
-    }
-
-    private fun loadStations() {
-        GlobalScope.launch {
-            jobHideRefresh?.cancel()
-            if (!stationsViewModel.isLoading) {
-                stationsViewModel.loadStations(context!!, imagesSaveDirectory)
-            }
-            startJobHideRefresh()
-        }
-    }
-
-    private fun startJobHideRefresh() {
-        jobHideRefresh = GlobalScope.launch {
-            if (!binding.swipeRefresh.isRefreshing) {
-                withContext(context = Dispatchers.Main) {
-                    binding.swipeRefresh.isRefreshing = true
-                }
-            }
-            while (true) {
-                if (stationsViewModel.allStations.value != null &&
-                    stationsViewModel.allStations.value!!.size >= HIDE_REFRESH_STATIONS_MAX) {
-                    break
-                }
-                Thread.sleep(HIDE_REFRESH_TIMEOUT / 10)
-                break
-            }
-            stationsViewModel.isLoading = false
-        }
-    }
-
-    companion object {
-        const val HIDE_REFRESH_TIMEOUT = 2000L
-        const val HIDE_REFRESH_STATIONS_MAX = 10
     }
 }

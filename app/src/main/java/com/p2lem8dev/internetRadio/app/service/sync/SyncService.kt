@@ -153,7 +153,7 @@ class SyncService : Service() {
             loadAll: Boolean = false,
             onNextLoaded: (() -> Unit)? = null
         ) {
-            if (instance != null) return
+            if (instance != null && instance!!.isRunning) return
             context.startForegroundService(Intent(context, SyncService::class.java).apply {
                 action = if (loadAll) ACTION_START_LOAD_ALL else ACTION_START_LOAD_BASE
                 putExtra(EXTRA_IMAGES_DOWNLOAD_DIR, imagesDownloadDir)

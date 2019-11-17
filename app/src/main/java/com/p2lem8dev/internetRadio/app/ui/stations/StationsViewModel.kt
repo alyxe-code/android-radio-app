@@ -13,7 +13,14 @@ import kotlinx.coroutines.*
 
 class StationsViewModel : ViewModel() {
 
-    var selectedStation = MutableLiveData<RadioStation>()
+    private var _selectedStation = MutableLiveData<RadioStation>()
+    val selectedStation: MutableLiveData<RadioStation>
+        get() {
+            if (_selectedStation.value == null) {
+                loadSelectedStation()
+            }
+            return _selectedStation
+        }
 
     var allStations = RadioStationRepository.get().getAllStationsLiveData()
     var favoriteStations = RadioStationRepository.get().getAllFavoriteStationsLiveData()
@@ -28,23 +35,22 @@ class StationsViewModel : ViewModel() {
 
     var isLoading = false
 
-    suspend fun getSelectedStation(): LiveData<RadioStation> {
-        if (selectedStation.value != null) {
-            return selectedStation
+    private fun loadSelectedStation() = GlobalScope.launch(context = Dispatchers.IO) {
+        if (_selectedStation.value != null) {
+            return@launch
         } else {
             SessionRepository.get().getCurrentSession().lastRunningStationId?.let { id ->
                 RadioStationRepository.get().findStation(id)?.let { station ->
-                    selectedStation.postValue(station)
+                    _selectedStation.postValue(station)
                 }
-                return selectedStation
+                return@launch
             }
 
             val station = getFirstStation()
             SessionRepository.get().let { sessionRepository ->
                 sessionRepository.updateLastRunningStation(station.stationId)
-                selectedStation.postValue(station)
+                _selectedStation.postValue(station)
             }
-            return selectedStation
         }
     }
 
@@ -57,9 +63,11 @@ class StationsViewModel : ViewModel() {
         return this
     }
 
-    fun getStations() = when (playlistSelector) {
-        Playlist.PLAYLIST_SELECTOR_FAVORITE -> favoriteStations
-        else -> allStations
+    fun getStations(): LiveData<List<RadioStation>> {
+        return when (playlistSelector) {
+            Playlist.PLAYLIST_SELECTOR_FAVORITE -> favoriteStations
+            else -> allStations
+        }
     }
 
     suspend fun setFavoriteInvert(station: RadioStation) {
@@ -73,9 +81,9 @@ class StationsViewModel : ViewModel() {
     ) {
         findStation(station.stationId) ?: return
         if (postValue) {
-            selectedStation.postValue(station)
+            _selectedStation.postValue(station)
         } else {
-            selectedStation.value = station
+            _selectedStation.value = station
         }
         if (updateSession) {
             GlobalScope.launch {

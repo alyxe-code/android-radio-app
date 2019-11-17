@@ -4,31 +4,32 @@ import android.content.Context
 import android.content.Intent
 import android.media.AudioManager
 import android.os.Bundle
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
+import android.util.Log
+import android.widget.ImageButton
 import android.widget.SeekBar
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.ActionBar
-import androidx.databinding.DataBindingUtil
-import androidx.fragment.app.Fragment
+import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
+import com.google.android.material.snackbar.Snackbar
 import com.p2lem8dev.internetRadio.R
-import com.p2lem8dev.internetRadio.app.MainActivity
 import com.p2lem8dev.internetRadio.app.service.player.PlayerService
+import com.p2lem8dev.internetRadio.app.ui.stations.StationsFragment
 import com.p2lem8dev.internetRadio.app.ui.stations.StationsViewModel
+import com.p2lem8dev.internetRadio.app.ui.utils.BindingFragment
 import com.p2lem8dev.internetRadio.app.utils.Playlist
+import com.p2lem8dev.internetRadio.database.radio.entities.RadioStation
 import com.p2lem8dev.internetRadio.databinding.FragmentPlayerBinding
 import com.p2lem8dev.internetRadio.net.repository.RadioStationRepository
 import com.p2lem8dev.internetRadio.net.repository.SessionRepository
 import kotlinx.coroutines.*
 import kotlin.math.roundToInt
 
-class PlayerFragment : Fragment() {
+class PlayerFragment : BindingFragment<FragmentPlayerBinding>(R.layout.fragment_player) {
 
     private lateinit var playerViewModel: PlayerViewModel
-    private lateinit var binding: FragmentPlayerBinding
     private lateinit var stationsViewModel: StationsViewModel
 
     private val mActivityCallback = object : PlayerViewModel.ActivityCallback {
@@ -41,31 +42,50 @@ class PlayerFragment : Fragment() {
             }
         }
 
+        private fun showSnackBarPlaylistNotLoaded() {
+            Snackbar
+                .make(binding.root, "Playlist not loaded. Try later", Snackbar.LENGTH_LONG)
+                .setAction("Load now") { view ->
+                    Toast
+                        .makeText(context, "Loading...", Toast.LENGTH_SHORT)
+                        .show()
+                }
+                .show()
+        }
+
         override fun onClickNext(isPlaying: Boolean) {
-            val playlist = Playlist.createFrom(
-                stationsViewModel.getStations().value!!,
-                stationsViewModel.selectedStation.value
-            )
-            stationsViewModel.setSelected(playlist.next)
-            GlobalScope.launch {
-                startPlayerService(
-                    playlist.next.stationId,
-                    getServiceActionNextPrevious()
+            if (stationsViewModel.getStations().value != null) {
+                val playlist = Playlist.createFrom(
+                    stationsViewModel.getStations().value!!,
+                    stationsViewModel.selectedStation.value
                 )
+                stationsViewModel.setSelected(playlist.next)
+                GlobalScope.launch {
+                    startPlayerService(
+                        playlist.next.stationId,
+                        getServiceActionNextPrevious()
+                    )
+                }
+            } else {
+                showSnackBarPlaylistNotLoaded()
             }
         }
 
         override fun onClickPrevious(isPlaying: Boolean) {
-            val playlist = Playlist.createFrom(
-                stationsViewModel.getStations().value!!,
-                stationsViewModel.selectedStation.value
-            )
-            stationsViewModel.setSelected(playlist.previous)
-            GlobalScope.launch {
-                startPlayerService(
-                    playlist.previous.stationId,
-                    getServiceActionNextPrevious()
+            if (stationsViewModel.getStations().value != null) {
+                val playlist = Playlist.createFrom(
+                    stationsViewModel.getStations().value!!,
+                    stationsViewModel.selectedStation.value
                 )
+                stationsViewModel.setSelected(playlist.previous)
+                GlobalScope.launch {
+                    startPlayerService(
+                        playlist.previous.stationId,
+                        getServiceActionNextPrevious()
+                    )
+                }
+            } else {
+                showSnackBarPlaylistNotLoaded()
             }
         }
 
@@ -86,94 +106,78 @@ class PlayerFragment : Fragment() {
     private var soundVolume: Int = 0
     private var maxSoundVolume: Int = 15
 
-    override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View? {
-        binding = DataBindingUtil.inflate(
-            inflater, R.layout.fragment_player, container, false
-        )
-        return binding.root
+    private var jobUpdateSoundVolume: Job? = null
+
+    private val soundVolumeHandler = object : SeekBar.OnSeekBarChangeListener {
+
+        override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+            setVolumeByProgress(progress)
+        }
+
+        override fun onStartTrackingTouch(seekBar: SeekBar?) {
+            jobUpdateSoundVolume?.cancel()
+        }
+
+        override fun onStopTrackingTouch(seekBar: SeekBar?) {
+            startJobUpdateSoundVolume()
+        }
+    }
+
+    private fun startJobUpdateSoundVolume() {
+        jobUpdateSoundVolume?.cancel()
+        jobUpdateSoundVolume = GlobalScope.launch {
+            Thread.sleep(100)
+            while (true) {
+                Thread.sleep(200)
+                updateSoundVolumeBySystem()
+            }
+        }
+    }
+
+    private val allStationsLoadedObserver = Observer<List<RadioStation>> {
+        onceAllStationsLoaded()
+    }
+
+    private fun onceAllStationsLoaded() {
+        stationsViewModel.allStations.removeObserver(allStationsLoadedObserver)
     }
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
 
-        setActionBarTitle("")
+        setupActionBar(null)
 
         playerViewModel = ViewModelProvider(activity!!).get(PlayerViewModel::class.java)
         playerViewModel.setActivityCallback(mActivityCallback)
 
         stationsViewModel = ViewModelProvider(activity!!).get(StationsViewModel::class.java)
 
-        GlobalScope.launch {
-            stationsViewModel.getSelectedStation().let {
-                playerViewModel.stationData.set(it.value)
-            }
-        }
-
         stationsViewModel.selectedStation.observe(activity!!, Observer {
-            playerViewModel.setStation(it)
-            setActionBarTitle(it.title)
+            GlobalScope.launch {
+                playerViewModel.setStation(it)
+
+                withContext(context = Dispatchers.Main) {
+                    setupActionBar(it.title)
+                }
+            }
         })
 
-        if (stationsViewModel.selectedStation.value == null) {
-            GlobalScope.launch {
-                SessionRepository.get().getCurrentSession().lastRunningStationId?.let { it ->
-                    RadioStationRepository.get().findStation(it)?.let { station ->
-                        stationsViewModel.setSelected(
-                            station,
-                            updateSession = false,
-                            postValue = true
-                        )
-                        return@launch
-                    }
-                }
-                if (stationsViewModel.getStations().value == null) {
-                    (if (stationsViewModel.playlistSelector) {
-                        stationsViewModel.getAllStations().first()
-                    } else {
-                        stationsViewModel.getAllFavoriteStations().first()
-                    }).let {
-                        stationsViewModel.setSelected(it, updateSession = true, postValue = true)
-                    }
-                } else {
-                    stationsViewModel.getAllStations().first().let {
-                        stationsViewModel.setSelected(it, updateSession = true, postValue = true)
-                    }
-                }
-            }
-        }
+        stationsViewModel.allStations.observe(activity!!, allStationsLoadedObserver)
 
         binding.viewModel = playerViewModel
         binding.executePendingBindings()
 
-        (activity!!.getSystemService(Context.AUDIO_SERVICE) as AudioManager).let {
-            maxSoundVolume = it.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
-            setVolumeByUnits(it.getStreamVolume(AudioManager.STREAM_MUSIC))
-        }
+        updateSoundVolumeBySystem()
 
-        binding.soundVolume.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                setVolumeByProgress(progress)
-            }
-
-            override fun onStartTrackingTouch(seekBar: SeekBar?) {
-            }
-
-            override fun onStopTrackingTouch(seekBar: SeekBar?) {
-            }
-        })
+        binding.soundVolume.setOnSeekBarChangeListener(soundVolumeHandler)
+        startJobUpdateSoundVolume()
     }
 
     override fun onResume() {
         super.onResume()
         jobUpdatePlaying = GlobalScope.launch {
             while (true) {
-                playerViewModel.isPlaying.set(
-                    SessionRepository.get().isPlaying()
-                )
+                playerViewModel.isPlaying.set(SessionRepository.get().isPlaying())
                 Thread.sleep(100)
             }
         }
@@ -181,6 +185,7 @@ class PlayerFragment : Fragment() {
 
     override fun onPause() {
         jobUpdatePlaying?.cancel()
+        jobUpdateSoundVolume?.cancel()
         super.onPause()
     }
 
@@ -201,6 +206,15 @@ class PlayerFragment : Fragment() {
         })
     }
 
+    private fun updateSoundVolumeBySystem() {
+        activity?.let { activity ->
+            (activity.getSystemService(Context.AUDIO_SERVICE) as AudioManager).let {
+                maxSoundVolume = it.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+                setVolumeByUnits(it.getStreamVolume(AudioManager.STREAM_MUSIC))
+            }
+        }
+    }
+
     private fun setVolumeByProgress(progress: Int) {
         soundVolume = (progress.toFloat() / (100.0F / maxSoundVolume)).roundToInt()
         val audioManager = activity!!.getSystemService(Context.AUDIO_SERVICE) as AudioManager
@@ -216,17 +230,24 @@ class PlayerFragment : Fragment() {
         binding.soundVolume.progress = soundVolume
     }
 
-    private fun setActionBarTitle(title: String) {
+    private fun setupActionBar(title: String?) {
         activity?.let { activity ->
-            (activity as MainActivity).let { mainActivity ->
-                mainActivity.supportActionBar?.let {
+            (activity as AppCompatActivity).let { appCompatActivity ->
+                appCompatActivity.supportActionBar?.let {
                     it.displayOptions = ActionBar.DISPLAY_SHOW_CUSTOM
-                    it.setCustomView(R.layout.actionbar_layout)
-                    (it.customView.findViewById(R.id.actionbar_title) as TextView)
-                        .text = title
+                    it.setCustomView(R.layout.actionbar_player_layout)
+                    it.customView.findViewById<TextView>(R.id.actionbar_title)
+                        .text = title ?: getString(R.string.title_player)
+                    it.customView.findViewById<ImageButton>(R.id.btn_settings).setOnClickListener {
+                        openSettings()
+                    }
                 }
             }
         }
+    }
+
+    private fun openSettings() {
+        Toast.makeText(context!!, "Open Settings", Toast.LENGTH_LONG).show()
     }
 }
 
